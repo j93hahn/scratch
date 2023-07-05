@@ -6,7 +6,7 @@ https://packaging.python.org/en/latest/guides/distributing-packages-using-setupt
 """
 setup(
     name='scratch',
-    version='0.1.0',
+    version='0.1.1',
     description='Personal scratchpad for research, machine learning, and experimentation.',
     url='https://github.com/j93hahn/scratch',
     author='Joshua Ahn',
