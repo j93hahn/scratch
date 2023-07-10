@@ -4,6 +4,26 @@ import subprocess
 from termcolor import cprint
 import yaml
 
+from scratch.utils.mailer import exp_fail, send_email
+import subprocess
+import yaml
+
+
+def run(file):
+    with open(file) as f:
+        file_ = yaml.safe_load(f)
+
+    dataset, scale = file_['arch']['dataset'], file_['arch']['scale']
+
+    ret = subprocess.run(f'python /share/data/pals/jjahn/nerf-pytorch/run_nerf.py --config /share/data/pals/jjahn/nerf-pytorch/configs/{dataset}.txt --distance_scale {scale}', shell=True, capture_output=True)
+    if ret.returncode != 0:
+        exp_fail()
+    else:
+        send_email(subject=f"Experiment {dataset} with scale {scale} succeeded", body=ret.stdout.decode('utf-8'), to="jjahn@uchicago.edu")
+
+
+# if __name__ == '__main__':
+#     run('config.yml')
 
 def exec_cmd(cmd):
     subprocess.run(cmd, shell=True, check=True)
@@ -20,14 +40,36 @@ if __name__ == '__main__':
     exec_cmd("python deploy.py")
 
 
-# template = """
-# python {code_root}/launch.py --config configs/zero123.yaml \
-#     --train --gpu 0 system.loggers.wandb.enable=false \
-#     data.image_path=/whc/load_3s/images/{img_name}_rgba.png \
-#     system.freq.guidance_eval=0 \
-#     system.guidance.pretrained_model_name_or_path="/whc/load_3s/zero123/105000.ckpt" \
-#     system.guidance.cond_elevation_deg={elev_deg}
-# """
+commands = {
+    'tensorf':  """
+                python /share/data/pals/jjahn/TensoRF/train.py \
+                    --config /share/data/pals/jjahn/tensoRF/configs/{}.txt \
+                    --distance_scale {} \
+                    --fea2denseAct {}
+                """,
+    'nerfacto': """
+                python /share/data/pals/jjahn/nerfstudio/nerfstudio/scripts/train.py nerfacto \
+                    --vis wandb --data /share/data/pals/jjahn/data/blender/lego --experiment-name blender_lego \
+                    --relative-model-dir nerfstudio_models --steps-per-save 0 --pipeline.model.background-color white \
+                    --pipeline.model.proposal-initial-sampler uniform \
+                    --pipeline.model.near-plane 2. --pipeline.model.far-plane 6. \
+                    --pipeline.datamanager.camera-optimizer.mode off --pipeline.model.use-average-appearance-embedding False \
+                    --pipeline.model.distortion-loss-mult 0 --pipeline.model.disable-scene-contraction True \
+                    --steps_per_eval_all_images 0 blender-data
+                """,
+    'mipnerf':  """
+                python
+                """,
+    'nerf':     """
+                python
+                """,
+    'dvgo':     """
+                python
+                """,
+    'plenoxel': """
+                python
+                """,
+}
 
 
 # def main():
