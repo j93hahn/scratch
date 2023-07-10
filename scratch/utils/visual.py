@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.colors import *
 
@@ -64,5 +65,19 @@ def visualize_norm_cmap_2d(
     plt.close()
 
 
-def sinebow():
-    ...
+"""
+Cyclic and uniform colormap. Imported from http://basecase.org/env/on-rainbows.
+"""
+def sinebow(n):
+
+    def compute_color(h):
+        h = (h + 0.5) * -1
+        c = torch.stack([
+            torch.sin(torch.pi * h),
+            torch.sin(torch.pi * (h + 1/3)),
+            torch.sin(torch.pi * (h + 2/3)),
+        ], axis=-1)
+        return (255 * c ** 2).type(torch.int16)
+
+    phi = (1+5**0.5)/2
+    return compute_color(n * phi)
