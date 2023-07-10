@@ -62,3 +62,7 @@ def visualize_norm_cmap_2d(
     plt.tight_layout()
     plt.savefig(f'{name.lower()}_iteration_{iteration}.png', dpi=300)
     plt.close()
+
+
+def sinebow():
+    ...
