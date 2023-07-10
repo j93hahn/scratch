@@ -24,7 +24,9 @@ Compute the weighted percentile of a batch of weight vectors.
 
 Args:
     w: Tensor. w is a batch of weight vectors, where each weight vector stores
-        the weight of each sample along the last axis [N_rays, N_samples].
+        the weight of each sample along the last axis [N_rays, N_samples]. Note
+        that from the volumetric rendering equations, w is not guaranteed to
+        sum to 1 along the last axis; w <= 1.
     p: float, the percentile to compute the CDF at.
 
 Returns:
@@ -48,7 +50,7 @@ def weighted_percentile(
 
 
 if __name__ == '__main__':
-    weighted_percentile(torch.tensor([
+    cw = weighted_percentile(torch.tensor([
         [0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 1.0],
         [0.0, 0.2, 0.2, 0.3, 0.1],
@@ -56,3 +58,5 @@ if __name__ == '__main__':
         [0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.8, 0.1, 0.0]
     ]))
+    assert torch.all(cw == torch.tensor([0, 4, 2, 0, 0, 2]))
+    print('Success!')
