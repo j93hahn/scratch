@@ -1,69 +1,58 @@
-import numpy as np
+import torch
 
 
 """
-compute the weights histogram of multiple rays --
+Compute the cumulative sum of w, not assuming all weight vectors sum to 1. We compute
+the integral of the interior bins/weight values, not the integral of the bin edges.
 
-vectorized wrapper function that computes the weights histogram of every ray in the batch simultaneously
+Args:
+    w: Tensor, which will be integrated along the last axis. w is preprocessed and
+        assumed to not have any NaNs or weight vectors that sum to 0.
+
+Returns:
+    cw: Tensor, the integral of w where cw[..., -1] = 1.
 """
-def histogram_percentile_val(
-    weights: np.ndarray,
-    sigmas: np.ndarray,
-    xyz_samples: np.ndarray,
-    percentile: float = 0.5,
+def integrate_weights(w):
+    cw = torch.cumsum(w, axis=-1) / torch.sum(w, axis=-1, keepdims=True)
+    # Ensure that the CDF ends with exactly 1.
+    assert torch.allclose(cw[..., -1], torch.ones_like(cw[..., -1]), atol=1e-2)
+    return cw
+
+
+"""
+Compute the weighted percentile of a batch of weight vectors.
+
+Args:
+    w: Tensor. w is a batch of weight vectors, where each weight vector stores
+        the weight of each sample along the last axis [N_rays, N_samples].
+    p: float, the percentile to compute the CDF at.
+
+Returns:
+    idxs: Tensor, the index of the first sample along each ray that has a CDF
+        value >= p. If all samples along a ray have a CDF value < p, then the
+        function returns 0 for that ray.
+"""
+def weighted_percentile(
+    w,
+    p: float = 0.5,
 ):
-    # weights: N_rays x N_samples
-    # sigmas: N_rays x N_samples
-    # xyz_samples: N_rays x N_samples x 3
-    _idxs = np.zeros(weights.shape[0], dtype=np.int32)
-    _weights = np.zeros(weights.shape[0], dtype=np.float32)
-    _sigmas = np.zeros(weights.shape[0], dtype=np.float32)
-    _xyz_locs = np.zeros((weights.shape[0], 3), dtype=np.float32)
+    w = torch.nan_to_num(w, nan=0.0)
+    mask = torch.sum(w, axis=-1) == 0
+    if torch.all(mask): # return zero if all weights are zero
+        return torch.zeros(w.shape[0], dtype=torch.int32)
 
-    # mask will store the indices of the rays that have not yet been processed
-    # as false; once a ray has been processed, its index will be set to true
-    mask = np.zeros(weights.shape[0], dtype=bool)
-    _weights_sum = weights.sum(axis=-1)
+    cw = integrate_weights(w[~mask])
+    w[~mask] = cw
+    w = (w >= p).type(torch.int32)
+    return torch.argmax(w, axis=-1)
 
-    # if the sum of the weights is 0, the ray passed through empty space; apply a
-    # mask to that ray as it will not contribute to the final image
-    if np.any(_weights_sum == 0):
-        mask[_weights_sum == 0] = True
-        if mask.sum() == weights.shape[0]:
-            return _idxs, _weights, _sigmas, _xyz_locs
 
-    # return the maximum weight if it is >= 50% of the total sum of the weights; this
-    # value must divide the weights histogram into two equal parts
-    np.seterr(divide='ignore', invalid='ignore')    # ignore divide by zero warnings
-    if np.any((weights[~mask].max(axis=-1) / _weights_sum[~mask]) >= 0.5):
-        _wmax = np.nan_to_num(weights.max(axis=-1) / _weights_sum, nan=0.0)
-        _wmax = (_wmax >= 0.5) & (~mask)
-        _idxs[_wmax] = weights.argmax(axis=-1)[_wmax]
-        _weights[_wmax] = weights[_wmax, _idxs[_wmax]]
-        _sigmas[_wmax] = sigmas[_wmax, _idxs[_wmax]]
-        _xyz_locs[_wmax] = xyz_samples[_wmax, _idxs[_wmax]]
-
-        # apply a mask to the rays that have been processed
-        mask[_wmax] = True
-        if mask.sum() == weights.shape[0]:
-            return _idxs, _weights, _sigmas, _xyz_locs
-
-    # normalize the weights of each ray to sum 1 and compute its cumulative distribution function
-    weights_cum = np.nan_to_num(weights / _weights_sum[..., None], nan=0.0)
-    weights_cum = np.cumsum(weights_cum, axis=-1)
-
-    # extract the first weight value at the specified percentile of the CDF for each ray
-    weights_cum = (weights_cum >= percentile)
-    _wpercentile = np.argmax(weights_cum, axis=-1) # argmax returns the first index where the condition is met
-
-    # store the index, weight, and xyz location of the given ray
-    _idxs[~mask] = _wpercentile[~mask]
-    _weights[~mask] = weights[~mask, _idxs[~mask]]
-    _sigmas[~mask] = sigmas[~mask, _idxs[~mask]]
-    _xyz_locs[~mask] = xyz_samples[~mask, _idxs[~mask]]
-
-    # turn divide by zero warnings back on
-    np.seterr(divide='warn', invalid='warn')
-
-    # return the indices, weights, and xyz locations of the rays
-    return _idxs, _weights, _sigmas, _xyz_locs
+if __name__ == '__main__':
+    weighted_percentile(torch.Tensor([
+        [0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 1.0],
+        [0.0, 0.2, 0.2, 0.3, 0.1],
+        [0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.8, 0.1, 0.0]
+    ]))
