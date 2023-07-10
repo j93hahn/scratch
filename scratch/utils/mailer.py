@@ -1,4 +1,8 @@
-# modeled from Haochen Wang's code
+"""
+Modeled from Haochen Wang's code.
+
+Designed for usage on the TTIC cluster.
+"""
 
 import os
 import logging
@@ -11,8 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 def send_email(
-    subject, body, to,
-    sender="jjahn@exp.ttic.edu",
+    subject,
+    body,
+    to="jjahn@uchicago.edu",
+    sender="jjahn@experiments.ttic.edu",
 ):
     msg = EmailMessage()
     msg.set_content(body)
