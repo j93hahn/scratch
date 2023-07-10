@@ -14,4 +14,10 @@ setup(
     packages=find_packages(),
     python_requires='>=3',
     install_requires=[],
+    entry_points={
+        'console_scripts': [
+            'alloc=scratch.deploy.alloc:main',
+            'rune=scratch.deploy.rune:main',
+        ]
+    },
 )

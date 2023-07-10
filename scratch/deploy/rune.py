@@ -1,3 +1,11 @@
+"""
+Inspiration taken from Haochen Wang.
+
+Designed for usage on the TTIC cluster. This script will run the experiments
+using the parameters specified in the config file.
+"""
+
+
 from pathlib import Path
 import subprocess
 
@@ -34,6 +42,10 @@ def load_cfg(fname=None):
     with open(fname, "r") as f:
         cfg = yaml.safe_load(f)
     return cfg
+
+
+def main():
+    return
 
 
 if __name__ == '__main__':
