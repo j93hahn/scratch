@@ -48,7 +48,7 @@ def weighted_percentile(
 
 
 if __name__ == '__main__':
-    weighted_percentile(torch.Tensor([
+    weighted_percentile(torch.tensor([
         [0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 1.0],
         [0.0, 0.2, 0.2, 0.3, 0.1],
