@@ -45,9 +45,3 @@ def warn_email(to="jjahn@uchicago.edu", subject=None, do_send=True):
             send_email(subject=subject, body=traceback.format_exc(), to=to)
     finally:
         pass
-
-
-def exp_fail():
-    with warn_email():
-        error_msg = f"experiment {os.getcwd().split('/')[-1]} failed on {os.environ.get('SLURMD_NODENAME')} with conda env {os.environ.get('CONDA_DEFAULT_ENV')}"
-        raise Exception(error_msg)
