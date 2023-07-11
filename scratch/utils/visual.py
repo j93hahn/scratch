@@ -73,7 +73,8 @@ class Sinebow():
     def __init__(self):
         self.registered = False
 
-    def rgb2hex(self, rgb):
+    @staticmethod
+    def rgb2hex(rgb):
         return '#%02x%02x%02x' % tuple(rgb)
 
     def sinebow(self, n):

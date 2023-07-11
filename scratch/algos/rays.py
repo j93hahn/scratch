@@ -15,7 +15,7 @@ Returns:
 def integrate_weights(w):
     cw = torch.cumsum(w, axis=-1) / torch.sum(w, axis=-1, keepdims=True)
     # Ensure that the CDF ends with exactly 1.
-    assert torch.allclose(cw[..., -1], torch.ones_like(cw[..., -1]), atol=1e-2)
+    assert torch.all(cw[..., -1] == 1.0)
     return cw
 
 
@@ -26,7 +26,7 @@ Args:
     w: Tensor. w is a batch of weight vectors, where each weight vector stores
         the weight of each sample along the last axis [N_rays, N_samples]. Note
         that from the volumetric rendering equations, w is not guaranteed to
-        sum to 1 along the last axis; w <= 1.
+        sum to 1 along the last axis; w is only guaranteed to be <= 1.
     p: float, the percentile to compute the CDF at.
 
 Returns:
