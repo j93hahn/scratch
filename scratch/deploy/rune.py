@@ -9,6 +9,7 @@ using the parameters specified in the config file and command line.
 import argparse
 import subprocess
 import json
+from itertools import combinations
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from termcolor import cprint
@@ -41,11 +42,16 @@ def generate_script(tdir: Path, args: argparse.Namespace):
         singleton = ""
 
     with open(tdir / "config.json", "r") as f:
-        job_cmd = json.load(f)['script']
-        job_cmd = ' '.join(job_cmd) + ' '
+        cfg = json.load(f)
+        job_cmd = ' '.join(cfg['script']) + ' '
 
     if args.job:
-        job_cmd += args.job
+        # get values from the config file to format missing components
+        # in the job command
+        vals = []
+        for i in range(list(cfg).index('script') + 1, len(list(cfg))):
+            vals.append(list(cfg.values())[i])
+        job_cmd += args.job.format(*vals)
 
     script = load_template()
     return script.format(
@@ -107,7 +113,7 @@ def main():
         )
 
     edirs = load_cfg(args.file)
-    print(f"Found {len(edirs)} experiments to run.")
+    print(f"Found {len(edirs)} experiments to {args.action}.")
 
     for tdir in edirs:
         tdir = Path(tdir)
