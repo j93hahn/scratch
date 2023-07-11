@@ -44,7 +44,8 @@ def generate_script(tdir: Path, args: argparse.Namespace):
         job_cmd = json.load(f)['script']
         job_cmd = ' '.join(job_cmd) + ' '
 
-    job_cmd += args.job
+    if args.job:
+        job_cmd += args.job
 
     script = load_template()
     return script.format(
@@ -121,9 +122,10 @@ def main():
 
         if args.action == 'cancel':
             sbatch_cancel(tdir.name)
-            cprint(f"Cancelling job in {tdir}", 'red')
+            cprint(f"Cancelling job in folder {tdir.name}", 'red')
         else:
             sbatch_run(tdir, script)
+            cprint(f"Running job in folder {tdir.name}", 'cyan')
 
 
 def sbatch_run(tdir: Path, script: str):
