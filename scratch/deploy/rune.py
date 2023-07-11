@@ -90,16 +90,16 @@ def main():
         help='store the slurm output in this file'
     )
     parser.add_argument(
-        '--nost', default=True, action='store_false',
-        help='do not use the singleton option'
-    )
-    parser.add_argument(
         '-c', '--conda', type=str, required=False, default="base",
         help='the conda environment to use'
     )
     parser.add_argument(
         '-m', '--mock', default=False, action='store_true',
         help='in mock mode the slurm command is printed but not executed'
+    )
+    parser.add_argument(
+        '--nost', default=True, action='store_false',
+        help='do not use the singleton option'
     )
     args = parser.parse_args()
     print(args)
