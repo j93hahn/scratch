@@ -16,7 +16,7 @@ setup(
     install_requires=[],
     entry_points={
         'console_scripts': [
-            'alloc=scratch.deploy.alloc:main',
+            'circe=scratch.deploy.circe:main',
             'rune=scratch.deploy.rune:main',
         ]
     },

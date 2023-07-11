@@ -1,0 +1,15 @@
+{
+    "uniform": {
+        "_desc": "uniformly apply these configurations to all experiments",
+        "model": {
+            "option1": "scratch",
+            "option2": 3.14
+        },
+        "script": "python train.py"
+    },
+    "singular": {
+        "_desc": "singularly apply these configurations to each experiment",
+        "data": ["chair", "drums", "ficus", "hotdog", "lego", "materials", "mic", "ship"],
+        "scale": [0.1, 1.0, 10.0]
+    }
+}
