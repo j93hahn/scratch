@@ -90,8 +90,8 @@ def main():
         help='store the slurm output in this file'
     )
     parser.add_argument(
-        '-s', '--singleton', default=True, action='store_false',
-        help='run the job as a singleton'
+        '--nost', default=True, action='store_false',
+        help='do not use the singleton option'
     )
     parser.add_argument(
         '-c', '--conda', type=str, required=False, default="base",
@@ -128,10 +128,10 @@ def main():
 
         if args.action == 'cancel':
             sbatch_cancel(tdir.name)
-            cprint(f"Cancelling job in folder {tdir.name}", 'red')
+            cprint(f"Cancelled job in folder {tdir.name}", 'red')
         else:
             sbatch_run(tdir, script)
-            cprint(f"Running job in folder {tdir.name}", 'cyan')
+            cprint(f"Submitted job in folder {tdir.name}", 'cyan')
 
 
 def sbatch_run(tdir: Path, script: str):
