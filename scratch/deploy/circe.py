@@ -17,7 +17,7 @@ from termcolor import cprint
 
 _DEFAULT_COLOR = 'cyan'
 _ALLOC_EXPERIMENTS_SPEC = {
-    'required': ['uniform', 'singular'],
+    'required': ['uniform', 'singular', {'uniform': 'script'}],
     'ignore': ['_desc']
 }
 
@@ -71,6 +71,7 @@ def main():
         cfg_abspath = os.path.join(LAUNCH_DIR_ABSPATH, dir_name)
         alloc_acc.append(cfg_abspath)
         plant_config(cfg, cfg_abspath)
+        time.sleep(1)
 
     # write the allocation log
     with open(ALLOC_LOG_FNAME, 'w') as f:
@@ -108,12 +109,17 @@ def verify_launch_config(launch_config: dict, requirements: dict):
             if isinstance(cfg[param], dict):
                 dfs_delete_key(key, cfg[param])
 
-    for key in requirements['required']:
-        assert key in launch_config and launch_config[key], \
-            f"field '{key}' is required in the launch config. Given {launch_config.keys()}"
-
     for key in requirements['ignore']:
         dfs_delete_key(key, launch_config)
+
+    for key in requirements['required']:
+        if isinstance(key, str):
+            assert key in launch_config and launch_config[key], \
+                f"field '{key}' is required in the launch config. Given {launch_config.keys()}"
+        elif isinstance(key, dict):
+            for subkey, subval in key.items():
+                assert subval in launch_config[subkey] and launch_config[subkey][subval], \
+                    f"field '{subval}' must be one of {subkey}. Given {launch_config[subkey]}"
 
 
 def cartesian_expand(cfg: dict) -> list:
@@ -134,7 +140,6 @@ def cartesian_expand(cfg: dict) -> list:
 
 def plant_config(cfg: dict, cfg_abspath: str):
     """Plants a config dictionary into a directory."""
-    time.sleep(1)
     if not os.path.isdir(cfg_abspath):
         os.mkdir(cfg_abspath)
     with open(os.path.join(cfg_abspath, 'config.json'), 'w') as f:

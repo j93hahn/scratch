@@ -5,7 +5,12 @@
             "option1": "scratch",
             "option2": 3.14
         },
-        "script": "python train.py"
+        "script": [
+            "python train.py",
+            "--net resnet18",
+            "--optimizer adam",
+            "--lr 0.001"
+        ]
     },
     "singular": {
         "_desc": "singularly apply these configurations to each experiment",

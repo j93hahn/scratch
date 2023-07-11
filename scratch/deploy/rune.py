@@ -2,131 +2,142 @@
 Inspiration taken from Haochen Wang.
 
 Designed for usage on the TTIC cluster. This script will run the experiments
-using the parameters specified in the config file.
+using the parameters specified in the config file and command line.
 """
 
 
+import argparse
+import subprocess
+import json
 from pathlib import Path
-import subprocess
-
+from tempfile import NamedTemporaryFile
 from termcolor import cprint
-import yaml
-
-from scratch.utils.mailer import exp_fail, send_email
-import subprocess
-import yaml
+from scratch.utils.mailer import send_email
 
 
-def run(file):
-    with open(file) as f:
-        file_ = yaml.safe_load(f)
-
-    dataset, scale = file_['arch']['dataset'], file_['arch']['scale']
-
-    ret = subprocess.run(f'python /share/data/pals/jjahn/nerf-pytorch/run_nerf.py --config /share/data/pals/jjahn/nerf-pytorch/configs/{dataset}.txt --distance_scale {scale}', shell=True, capture_output=True)
-    if ret.returncode != 0:
-        exp_fail()
-    else:
-        send_email(subject=f"Experiment {dataset} with scale {scale} succeeded", body=ret.stdout.decode('utf-8'), to="jjahn@uchicago.edu")
-
-
-# if __name__ == '__main__':
-#     run('config.yml')
-
-def exec_cmd(cmd):
-    subprocess.run(cmd, shell=True, check=True)
+_VALID_ACTIONS = ('run', 'cancel')
+_DEFAULT_PARTITION = 'greg-gpu'
 
 
 def load_cfg(fname=None):
     assert fname is not None
     with open(fname, "r") as f:
-        cfg = yaml.safe_load(f)
+        cfg = json.load(f)
     return cfg
 
 
+def load_template():
+    template_fname = Path(__file__).resolve().parent / "sbatch_template.sh"
+    with template_fname.open("r") as f:
+        template = f.read()
+    return template
+
+
+def generate_script(tdir: Path, args: argparse.Namespace):
+    """Generate the sbatch script as a string and return it."""
+    if args.singleton:
+        singleton = "#SBATCH -d singleton"
+    else:
+        singleton = ""
+
+    with open(tdir / "config.json", "r") as f:
+        job_cmd = json.load(f)['script']
+        job_cmd = ' '.join(job_cmd) + ' '
+
+    job_cmd += args.job
+
+    script = load_template()
+    return script.format(
+        jname=tdir.name, singleton=singleton,
+        partition=args.partition, num_devices=args.num_cores,
+        log_fname=Path(tdir) / args.log,
+        task_dirname=tdir, conda_env=args.conda,
+        job_cmd=job_cmd
+    )
+
+
 def main():
-    return
+    parser = argparse.ArgumentParser(description="run the experiments")
+    parser.add_argument(
+        '-f', '--file', type=str, required=True,
+        help='a json file containing a list of absolute paths to the job folders'
+    )
+    parser.add_argument(
+        '-a', '--action', default='run',
+        help='one of {}, default {}'.format(_VALID_ACTIONS, _VALID_ACTIONS[0])
+    )
+    parser.add_argument(
+        '-p', '--partition', default=_DEFAULT_PARTITION, type=str,
+        help='the job partition. default {}'.format(_DEFAULT_PARTITION)
+    )
+    parser.add_argument(
+        '-n', '--num-cores', type=int, default=1,
+        help='Number of cores to run the job.'
+    )
+    parser.add_argument(
+        '-j', '--job', type=str, required=False, default="",
+        help='supplements to the job command supplied in the config file'
+    )
+    parser.add_argument(
+        '-l', '--log', type=str, required=False, default="slurm.out",
+        help='store the slurm output in this file'
+    )
+    parser.add_argument(
+        '-s', '--singleton', default=True, action='store_false',
+        help='run the job as a singleton'
+    )
+    parser.add_argument(
+        '-c', '--conda', type=str, required=False, default="base",
+        help='the conda environment to use'
+    )
+    parser.add_argument(
+        '-m', '--mock', default=False, action='store_true',
+        help='in mock mode the slurm command is printed but not executed'
+    )
+    args = parser.parse_args()
+    print(args)
+
+    if args.mock:
+        print("WARN: using mock mode")
+
+    if args.action not in _VALID_ACTIONS:
+        raise ValueError(
+            f"action must be one of {_VALID_ACTIONS}, but given: {args.action}"
+        )
+
+    edirs = load_cfg(args.file)
+    print(f"Found {len(edirs)} experiments to run.")
+
+    for tdir in edirs:
+        tdir = Path(tdir)
+        assert tdir.exists() and tdir.is_dir(), \
+            f"{tdir} does not exist or is not a directory"
+
+        script = generate_script(tdir, args)
+
+        if args.mock:
+            print(script)
+            return
+
+        if args.action == 'cancel':
+            sbatch_cancel(tdir.name)
+            cprint(f"Cancelling job in {tdir}", 'red')
+        else:
+            sbatch_run(tdir, script)
 
 
-if __name__ == '__main__':
-    exec_cmd("python deploy.py")
+def sbatch_run(tdir: Path, script: str):
+    with NamedTemporaryFile(suffix='.sh') as sbatch_file:
+        script = str.encode(script)
+        sbatch_file.file.write(script)
+        sbatch_file.file.seek(0)
+        sbatch_script = sbatch_file.name
+        ret = subprocess.run(f"sbatch {sbatch_script}", shell=True, capture_output=True)
+        if ret.returncode != 0:
+            send_email("Exp failed", f"Experiment {tdir.name} failed.")
+        else:
+            send_email("Exp success", f"Experiment {tdir.name} succeeded.")
 
 
-commands = {
-    'tensorf':  """
-                python /share/data/pals/jjahn/TensoRF/train.py \
-                    --config /share/data/pals/jjahn/tensoRF/configs/{}.txt \
-                    --distance_scale {} \
-                    --fea2denseAct {}
-                """,
-    'nerfacto': """
-                python /share/data/pals/jjahn/nerfstudio/nerfstudio/scripts/train.py nerfacto \
-                    --vis wandb --data /share/data/pals/jjahn/data/blender/lego --experiment-name blender_lego \
-                    --relative-model-dir nerfstudio_models --steps-per-save 0 --pipeline.model.background-color white \
-                    --pipeline.model.proposal-initial-sampler uniform \
-                    --pipeline.model.near-plane 2. --pipeline.model.far-plane 6. \
-                    --pipeline.datamanager.camera-optimizer.mode off --pipeline.model.use-average-appearance-embedding False \
-                    --pipeline.model.distortion-loss-mult 0 --pipeline.model.disable-scene-contraction True \
-                    --steps_per_eval_all_images 0 blender-data
-                """,
-    'mipnerf':  """
-                python
-                """,
-    'nerf':     """
-                python
-                """,
-    'dvgo':     """
-                python
-                """,
-    'plenoxel': """
-                python
-                """,
-}
-
-
-# def main():
-#     code_root = dir_of_this_file(__file__)
-#     cfg = load_my_cfg()
-
-#     cmd = template.format(
-#         code_root=str(code_root), **cfg
-#     )
-#     print(cmd)
-#     exec_cmd(cmd)
-
-
-# if __name__ == "__main__":
-#     main()
-
-
-# from my_utils import exec_cmd, dir_of_this_file, load_my_cfg, gpu_list_str
-
-
-# def main():
-#     code_root = dir_of_this_file(__file__)
-#     cfg = load_my_cfg()
-
-#     prompt = cfg['prompt']
-#     model = cfg['model']
-#     per_rank_bs = cfg['per_rank_bs']
-
-#     gpus = gpu_list_str()
-
-#     cfg_name = {
-#         "sd": "dreamfusion-sd.yaml",
-#         "if": "dreamfusion-if.yaml",
-#         "pd": "prolificdreamer.yaml",
-#     }[model]
-
-#     cmd = f"""
-#     python {code_root}/launch.py --config configs/{cfg_name} \
-#         --train --gpu {gpus} \
-#         system.prompt_processor.prompt="{prompt}" \
-#         data.batch_size={per_rank_bs}
-#     """
-#     print(cmd)
-#     exec_cmd(cmd)
-
-
-# if __name__ == "__main__":
-#     main()
+def sbatch_cancel(jname):
+    subprocess.run(f"scancel -n {jname}", shell=True, check=True)
