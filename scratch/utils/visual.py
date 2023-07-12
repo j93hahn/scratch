@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import torch
+from pathlib import Path
 from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.colors import *
 
@@ -111,7 +112,7 @@ class Sinebow():
 
 if __name__ == '__main__':
     Sinebow().register_mapping()
-    data = np.load('garden_data.npy')
+    data = np.load(Path(__file__).resolve().parent / 'gdata.npy')
     plt.imshow(data, cmap='Sinebow')
     plt.show()
     plt.close()
