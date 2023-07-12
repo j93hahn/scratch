@@ -9,11 +9,11 @@ various configuration files for different experiments into a single directory.
 import argparse
 import json
 import os
+import os.path as osp
 import sys
 import itertools
-import time
-from datetime import datetime
 from termcolor import cprint
+
 
 _DEFAULT_COLOR = 'cyan'
 _ALLOC_EXPERIMENTS_SPEC = {
@@ -29,7 +29,7 @@ def main():
         help='the json file containing the experiment specifications'
     )
     parser.add_argument(
-        '-d', '--dir', type=str, default='./',
+        '-d', '--dir', type=str, default='runs',
         help='the directory in which to plant experiment folders and configs'
     )
     parser.add_argument(
@@ -43,8 +43,8 @@ def main():
     args = parser.parse_args()
 
     LAUNCH_FNAME = args.file
-    LAUNCH_DIR_ABSPATH = os.path.abspath(args.dir)
-    ALLOC_LOG_FNAME = os.path.join(LAUNCH_DIR_ABSPATH, args.log)
+    LAUNCH_DIR_ABSPATH = osp.abspath(args.dir)
+    ALLOC_LOG_FNAME = osp.abspath(args.log)
 
     with open(LAUNCH_FNAME, 'r') as f:
         launch_config = json.load(f)
@@ -59,7 +59,7 @@ def main():
         return
 
     # create the launch directory if it doesn't exist
-    if not os.path.isdir(LAUNCH_DIR_ABSPATH):
+    if not osp.isdir(LAUNCH_DIR_ABSPATH):
         os.mkdir(LAUNCH_DIR_ABSPATH)
         print(f'Created directory {LAUNCH_DIR_ABSPATH}')
     os.chdir(LAUNCH_DIR_ABSPATH)
@@ -67,11 +67,11 @@ def main():
     # plant the experiment folders and configs
     alloc_acc = []
     for cfg in cfgs:
-        dir_name = datetime.now().strftime("%y_%m%d_%H%M_%S")
-        cfg_abspath = os.path.join(LAUNCH_DIR_ABSPATH, dir_name)
+        dir_name = cfg['name']
+        del cfg['name']
+        cfg_abspath = osp.join(LAUNCH_DIR_ABSPATH, dir_name)
         alloc_acc.append(cfg_abspath)
         plant_config(cfg, cfg_abspath)
-        time.sleep(1)
 
     # write the allocation log
     with open(ALLOC_LOG_FNAME, 'w') as f:
@@ -86,7 +86,8 @@ def extract_launch_config(launch_config: dict) -> dict:
     cfgs = cartesian_expand(launch_config['singular'])
     for i in range(len(cfgs)):
         # update the singular config with the uniform config if it exists
-        cfgs[i] = {**launch_config['uniform'], **cfgs[i]}
+        name = {'name': '_'.join(map(str, list(cfgs[i].values())))}
+        cfgs[i] = {**name, **launch_config['uniform'], **cfgs[i]}
 
     return cfgs
 
@@ -145,9 +146,10 @@ def cartesian_expand(cfg: dict) -> list:
 
 def plant_config(cfg: dict, cfg_abspath: str):
     """Plants a config dictionary into a directory."""
-    if not os.path.isdir(cfg_abspath):
+    if not osp.isdir(cfg_abspath):
+
         os.mkdir(cfg_abspath)
-    with open(os.path.join(cfg_abspath, 'config.json'), 'w') as f:
+    with open(osp.join(cfg_abspath, 'config.json'), 'w') as f:
         json.dump(cfg, f, indent=4)
         f.write('\n')
         cprint(f"allocating: {cfg_abspath.split('/')[-1]}", color=_DEFAULT_COLOR)

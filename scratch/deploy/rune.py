@@ -9,11 +9,9 @@ using the parameters specified in the config file and command line.
 import argparse
 import subprocess
 import json
-from itertools import combinations
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from termcolor import cprint
-from scratch.utils.mailer import send_email
 
 
 _VALID_ACTIONS = ('run', 'cancel')
@@ -54,10 +52,13 @@ def generate_script(tdir: Path, args: argparse.Namespace):
 
     script = load_template()
     return script.format(
-        jname=tdir.name, singleton=singleton,
-        partition=args.partition, num_devices=args.num_cores,
+        jname=tdir.name,        # job name is the name of the experiment's directory
+        singleton=singleton,
+        partition=args.partition,
+        num_devices=args.num_cores,
         log_fname=Path(tdir) / args.log,
-        task_dirname=tdir, conda_env=args.conda,
+        task_dirname=tdir,
+        conda_env=args.conda,
         job_cmd=job_cmd
     )
 
@@ -125,25 +126,21 @@ def main():
             print(script)
             return
 
-        if args.action == 'cancel':
-            sbatch_cancel(tdir.name)
-            cprint(f"Cancelled job in folder {tdir.name}", 'red')
+        if args.action == 'run':
+            sbatch_run(script)
+            cprint(f"Submitted batch job named {tdir.name}", 'cyan')
         else:
-            sbatch_run(tdir, script)
-            cprint(f"Submitted job in folder {tdir.name}", 'cyan')
+            sbatch_cancel(tdir.name)
+            cprint(f"Cancelled batch job named {tdir.name}", 'red')
 
 
-def sbatch_run(tdir: Path, script: str):
+def sbatch_run(script: str):
     with NamedTemporaryFile(suffix='.sh') as sbatch_file:
         script = str.encode(script)
         sbatch_file.file.write(script)
         sbatch_file.file.seek(0)
         sbatch_script = sbatch_file.name
-        ret = subprocess.run(f"sbatch {sbatch_script}", shell=True, capture_output=True)
-        if ret.returncode != 0:
-            send_email("Exp failed", f"Experiment {tdir.name} failed.")
-        else:
-            send_email("Exp success", f"Experiment {tdir.name} succeeded.")
+        subprocess.run(f"sbatch {sbatch_script}", shell=True, capture_output=True)
 
 
 def sbatch_cancel(jname):
