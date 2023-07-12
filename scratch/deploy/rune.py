@@ -36,10 +36,10 @@ def load_template():
 
 def generate_script(tdir: Path, args: argparse.Namespace):
     """Generate the sbatch script as a string and return it."""
-    if args.singleton:
-        singleton = "#SBATCH -d singleton"
-    else:
+    if args.nost:
         singleton = ""
+    else:
+        singleton = "#SBATCH -d singleton"
 
     with open(tdir / "config.json", "r") as f:
         cfg = json.load(f)
@@ -98,8 +98,8 @@ def main():
         help='in mock mode the slurm command is printed but not executed'
     )
     parser.add_argument(
-        '--nost', default=True, action='store_false',
-        help='do not use the singleton option'
+        '--nost', default=False, action='store_true',
+        help='do use the singleton option'
     )
     args = parser.parse_args()
     print(args)
