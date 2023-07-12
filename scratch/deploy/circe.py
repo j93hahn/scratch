@@ -13,6 +13,7 @@ import os.path as osp
 import sys
 import itertools
 from termcolor import cprint
+from .rune import load_cfg
 
 
 _DEFAULT_COLOR = 'cyan'
@@ -46,10 +47,8 @@ def main():
     LAUNCH_DIR_ABSPATH = osp.abspath(args.dir)
     ALLOC_LOG_FNAME = osp.abspath(args.log)
 
-    with open(LAUNCH_FNAME, 'r') as f:
-        launch_config = json.load(f)
-
-    cfgs = extract_launch_config(launch_config)
+    launch_config = load_cfg(LAUNCH_FNAME)
+    cfgs = extract_from_launch_config(launch_config)
 
     if args.mock:
         print('\nrunning in mock mode, will not plant experiment folders and configs\n')
@@ -80,7 +79,7 @@ def main():
         cprint(f'logged allocations to {ALLOC_LOG_FNAME}', color=_DEFAULT_COLOR)
 
 
-def extract_launch_config(launch_config: dict) -> dict:
+def extract_from_launch_config(launch_config: dict) -> dict:
     verify_launch_config(launch_config, _ALLOC_EXPERIMENTS_SPEC)
 
     cfgs = cartesian_expand(launch_config['singular'])
@@ -147,7 +146,6 @@ def cartesian_expand(cfg: dict) -> list:
 def plant_config(cfg: dict, cfg_abspath: str):
     """Plants a config dictionary into a directory."""
     if not osp.isdir(cfg_abspath):
-
         os.mkdir(cfg_abspath)
     with open(osp.join(cfg_abspath, 'config.json'), 'w') as f:
         json.dump(cfg, f, indent=4)
