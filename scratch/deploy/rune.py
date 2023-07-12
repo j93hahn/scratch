@@ -46,8 +46,7 @@ def generate_script(tdir: Path, args: argparse.Namespace):
         job_cmd = ' '.join(cfg['script']) + ' '
 
     if args.job:
-        # get values from the config file to format missing components
-        # in the job command
+        # get values from the config file to format missing components in the job command
         vals = []
         for i in range(list(cfg).index('script') + 1, len(list(cfg))):
             vals.append(list(cfg.values())[i])

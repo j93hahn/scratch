@@ -121,6 +121,11 @@ def verify_launch_config(launch_config: dict, requirements: dict):
                 assert subval in launch_config[subkey] and launch_config[subkey][subval], \
                     f"field '{subval}' must be one of {subkey}. Given {launch_config[subkey]}"
 
+    # verify that the last field in the uniform config is 'script'; a requirement for
+    # the generate_script() command in rune.py
+    assert 'script' == list(launch_config['uniform'].keys())[-1], \
+        f"the last field in the uniform config must be 'script'. Given {launch_config['uniform'].keys()[-1]}"
+
 
 def cartesian_expand(cfg: dict) -> list:
     """Expands a config dictionary into a list of configs. The length of the output
