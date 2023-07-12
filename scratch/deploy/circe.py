@@ -85,7 +85,7 @@ def extract_launch_config(launch_config: dict) -> dict:
 
     cfgs = cartesian_expand(launch_config['singular'])
     for i in range(len(cfgs)):
-        # update the singular config with the uniform config if it exists
+        # update the singular config with job/experiment name and the uniform config
         name = {'name': '_'.join(map(str, list(cfgs[i].values())))}
         cfgs[i] = {**name, **launch_config['uniform'], **cfgs[i]}
 
