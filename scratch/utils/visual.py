@@ -112,7 +112,7 @@ class Sinebow():
 
 if __name__ == '__main__':
     Sinebow().register_mapping()
-    data = np.load(Path(__file__).resolve().parent / 'gdata.npy')
+    data = np.load(Path(__file__).resolve().parent.parent / 'garden_data.npy')
     plt.imshow(data, cmap='Sinebow')
     plt.show()
     plt.close()
