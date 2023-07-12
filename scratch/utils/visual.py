@@ -17,8 +17,8 @@ def trailing_window_view(xs, window_size):
     return view
 
 
-def make_plot(ax, xs, psnrs, label, ws=51):
-    data = trailing_window_view(psnrs, ws)
+def make_plot(ax, xs, ys, label, ws=51):
+    data = trailing_window_view(ys, ws)
     μ = data.mean(-1)
     σ = data.std(-1)
     ax.plot(xs, μ, label=label, alpha=0.7)
