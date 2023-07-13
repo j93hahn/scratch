@@ -94,8 +94,8 @@ def main():
         help='the conda environment to use'
     )
     parser.add_argument(
-        '-m', '--mock', default=False, action='store_true',
-        help='in mock mode the slurm command is printed but not executed'
+        '-P', '--print', default=False, action='store_true',
+        help='in print mode the slurm command is printed but not executed'
     )
     parser.add_argument(
         '--nost', default=False, action='store_true',
@@ -104,8 +104,8 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    if args.mock:
-        print("WARN: using mock mode")
+    if args.print:
+        print("WARN: using print mode")
 
     if args.action not in _VALID_ACTIONS:
         raise ValueError(
@@ -122,7 +122,7 @@ def main():
 
         script = generate_script(tdir, args)
 
-        if args.mock:
+        if args.print:
             print(script)
             return
 

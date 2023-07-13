@@ -38,8 +38,12 @@ def main():
         help='a json containing a list of abspaths to allocated exps'
     )
     parser.add_argument(
-        '-m', '--mock', action='store_true',
-        help='mock mode: print the configs to stdout but do not plant them'
+        '-m', '--mode', type=str, default='cartesian', choices=['cartesian', 'monopole'],
+        help='the mode in which to expand the experiment specifications'
+    )
+    parser.add_argument(
+        '-P', '--print', action='store_true',
+        help='print mode: print the configs to stdout but do not plant them'
     )
     args = parser.parse_args()
 
@@ -48,10 +52,10 @@ def main():
     ALLOC_LOG_FNAME = osp.abspath(args.log)
 
     launch_config = load_cfg(LAUNCH_FNAME)
-    cfgs = extract_from_launch_config(launch_config)
+    cfgs = extract_from_launch_config(launch_config, args.mode)
 
-    if args.mock:
-        print('\nrunning in mock mode, will not plant experiment folders and configs\n')
+    if args.print:
+        print('\nrunning in print mode, will not plant experiment folders and configs\n')
         for cfg in cfgs:
             json.dump(cfg, sys.stdout, indent=4)
             sys.stdout.write('\n\n')
@@ -79,10 +83,13 @@ def main():
         cprint(f'logged allocations to {ALLOC_LOG_FNAME}', color=_DEFAULT_COLOR)
 
 
-def extract_from_launch_config(launch_config: dict) -> dict:
+def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
     verify_launch_config(launch_config, _ALLOC_EXPERIMENTS_SPEC)
 
-    cfgs = cartesian_expand(launch_config['singular'])
+    if mode == 'cartesian':
+        cfgs = cartesian_expansion(launch_config['singular'])
+    elif mode == 'monopole':
+        cfgs = monopole_expansion(launch_config['singular'])
     for i in range(len(cfgs)):
         # update the singular config with job/experiment name and the uniform config
         name = {'name': '_'.join(map(str, list(cfgs[i].values())))}
@@ -127,9 +134,9 @@ def verify_launch_config(launch_config: dict, requirements: dict):
         f"the last field in the uniform config must be 'script'. Given {launch_config['uniform'].keys()[-1]}"
 
 
-def cartesian_expand(cfg: dict) -> list:
-    """Expands a config dictionary into a list of configs. The length of the output
-        is the product of the lengths of the values in the config dictionary.
+def cartesian_expansion(cfg: dict) -> list:
+    """Expands a config dictionary into a list of configs via cartesian expansion. The length of
+        the output is the product of the lengths of each key's list in the singular config.
 
     Args:
         cfg (dict): the config dictionary
@@ -139,6 +146,22 @@ def cartesian_expand(cfg: dict) -> list:
     """
     output = []
     for x in itertools.product(*cfg.values()):
+        output.append(dict(zip(cfg, x)))
+    return output
+
+
+def monopole_expansion(cfg: dict) -> list:
+    """Expands a config dictionary into a list of configs via monopole expansion. The length of
+        the output is the length of the longest list in the singular config.
+
+    Args:
+        cfg (dict): the config dictionary
+
+    Returns:
+        A list of configs. Note that the length of the output is the length of the longest list.
+    """
+    output = []
+    for x in list(zip(*cfg.values())):
         output.append(dict(zip(cfg, x)))
     return output
 
