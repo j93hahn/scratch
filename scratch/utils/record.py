@@ -21,7 +21,10 @@ def get_metric_storage():
 
 
 class MetricStorage():
-    def __init__(self, output_dir: str='./'):
+    def __init__(
+        self,
+        output_dir: str='./'
+    ) -> None:
         self._LOGGING_LEVELS = 1
 
         self._init_base_logging(output_dir)
@@ -58,7 +61,7 @@ class MetricStorage():
             'output_dir': output_dir
         }
 
-    def add_metrics_writer(self, output_path: str, level: int=-1):
+    def add_metrics_writer(self, output_path: str, level: int=-1) -> MetricWriter:
         """Adds a metrics writer to the metric storage and returns the metrics writer object."""
         if level == -1:
             # return the metrics writer for the deepest logging level
@@ -81,7 +84,7 @@ class MetricStorage():
         metric['metrics'].append(_new_writer)
         return _new_writer
 
-    def add_video_writer(self, output_path: str, fps: int, level: int=-1):
+    def add_video_writer(self, output_path: str, fps: int, level: int=-1) -> VideoWriter:
         """Adds a video writer to the metric storage and returns the video writer object."""
         if level == -1:
             # return the metrics writer for the deepest logging level
@@ -156,9 +159,4 @@ if __name__ == '__main__':
     with MetricStorage() as m:
         # m.create_logging_level('../test')
         # m.create_logging_level('../test2')
-        m.add_metrics_writer('test.txt', level=-1)
-
-    with MetricStorage() as f:
-        print("Should not hit here")
-    # j = get_metric_storage()
-        # breakpoint()
+        m.add_metrics_writer('yo.json', level=-1)
