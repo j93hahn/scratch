@@ -1,78 +1,110 @@
 import imageio.v2 as iio
 import json
 import os
+import os.path as osp
 import threading
 import time
-import os.path as osp
-import sqlite3
 from typing import Any
 from pathlib import Path
 from datetime import datetime, timedelta
 
 
 class MetricWriter():
-    def __init__(self, output_path: str='history.json', sync_period: int=5):
-        # assert output_path.endswith('.json'), \
-        #     f"MetricWriter only supports .json files but got {output_path}."
+    def __init__(self, output_path: str='metric.json', start_iter: int=0, sync_period: int=60, seq: bool=True):
+        assert output_path.endswith('.json'), \
+            f"MetricWriter only supports .json files but got {output_path}."
         self.output_path = osp.abspath(output_path)
-        self.curr_history = []
+
+        # useful for when we don't want to log metrics for every single iteration
+        self._ns = not seq
+        self._iter = start_iter
         self._init_writer()
 
-        self.sync_period = timedelta(seconds=sync_period)
+        self._sync_period = timedelta(seconds=sync_period)
         self._init_ticker()
 
-        # self._establish_database()
+    def _init_writer(self):
+        self._init_curr_buffer()
+        self._writer = Path(self.output_path).open('a', encoding='utf8')
+        self._history = []   # ensure any edits to this list are lock-protected
+        self._history_lock = threading.Lock()
+
+    def _init_ticker(self):
+        self._join = False
+        self._last_sync = datetime.now()
+
+        self._flush_lock = threading.Lock()  # flushing history to disk must be lock-protected
+        self._ticker = threading.Thread(target=self._sync, daemon=True)
+        self._ticker.start()
+
+    def _init_curr_buffer(self):
+        self._curr_buffer = {'iter': self._iter}
+
+    def write(self, **kwargs):
+        """Add a metric to the current history."""
+        label: str
+        metric: Any
+        for label, metric in kwargs.items():
+            self._curr_buffer[label] = metric
+
+    def step(self, _iter: int=-1):
+        """Increment the current iteration and reset the current buffer. Protect the
+            history by acquiring/releasing a lock."""
+        self._history_lock.acquire()
+        self._history.append(self._curr_buffer)
+        self._history_lock.release()
+
+        if self._ns:
+            assert _iter != -1, "Must specify iteration number when not logging all iterations."
+            self._iter = _iter
+        else:
+            self._iter += 1
+        self._init_curr_buffer()
+
+    def _write_to_disk(self):
+        """Writes the data to the disk in a pretty and readable format. Previously, this function
+            would write each buffer inside of self._history to the disk in an individual fashion.
+        """
+        # self._writer.write(json.dumps(self._history) + '\n')
+        # self._writer.write(json.dumps(self._history, indent=4, sort_keys=True, ensure_ascii=False) + '\n')
+        for item in self._history:
+            line = json.dumps(item, sort_keys=True, ensure_ascii=False) + "\n"
+            self._writer.write(line)
+        self._writer.flush()
+
+    def _flush_history(self):
+        """Flush the current history to the disk. Ensure proper thread safety
+            by acquiring/releasing a lock."""
+        self._flush_lock.acquire()
+        self._history_lock.acquire()
+        if len(self._history):
+            self._write_to_disk()
+            self._history = []
+        self._history_lock.release()
+        self._flush_lock.release()
+
+    def _sync(self):
+        """Synchronizes the current metrics history with the disk. Managed
+            by a daemon thread; should never be called directly."""
+        while not self._join:
+            if (datetime.now() - self._last_sync) >= self._sync_period:
+                self._flush_history()
+                self._last_sync = datetime.now()
+
+    def close(self):
+        self._join = True
+        self._ticker.join()
+        self._flush_history()
+        self._writer.close()
 
     def _establish_database(self):
+        """Experimenting with sqlite3. For now, stick with json."""
+        import sqlite3
         self._conn = sqlite3.connect(self.output_path)
         self._cursor = self._conn.cursor()
         self._cursor.execute(
             'CREATE TABLE test_run (data NUMERIC)'
         )
-
-    def _init_ticker(self):
-        self._join = False
-        self.last_sync = datetime.now()
-        self.now = self.last_sync
-        self.ticker = threading.Thread(target=self.sync, daemon=True)
-        self.ticker.start()
-
-    def _init_writer(self):
-        self._writer = open(self.output_path, 'a+', encoding='utf-8')
-
-    def add_metric(self, metric: Any):
-        """Add a metric to the current history."""
-        self.curr_history.append(metric)
-
-    def flush_history(self):
-        self._cursor.execute(
-            'INSERT INTO test_run (data) self.curr_history'
-        )
-        self._conn.commit()
-        self.curr_history = []
-
-    def flush(self):
-        self._writer.write(json.dumps(self.curr_history))
-        self._writer.flush()
-        self.curr_history = []
-
-    def sync(self):
-        """Synchronizes the current metrics history with the disk."""
-        while not self._join:
-            self.now = datetime.now()
-            if (self.now - self.last_sync) >= self.sync_period:
-                print(self.now - self.last_sync)
-                self.flush()
-                # self.flush_history()
-                self.last_sync = self.now
-
-    def close(self):
-        if self.curr_history != []:
-            self.flush()
-        self._join = True
-        self.ticker.join()
-        self._writer.close()
-        # self._conn.close()
 
 
 class VideoWriter():
@@ -106,9 +138,15 @@ class VideoWriter():
 
 
 if __name__ == '__main__':
-    x = MetricWriter()
-    for i in range(10):
-        time.sleep(1)
-        x.add_metric(i)
-    print("Closing")
-    x.close()
+    writers = []
+    for i in range(1):
+        writers.append(MetricWriter(f'metric{i}.json', seq=False))
+
+    w: MetricWriter
+    for i in range(1000):
+        for w in writers:
+            w.write(loss=i*i)
+            w.step(_iter=1000*(i + 1))
+
+    for w in writers:
+        w.close()
