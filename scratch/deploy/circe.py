@@ -38,7 +38,7 @@ def main():
         help='a json containing a list of abspaths to allocated exps'
     )
     parser.add_argument(
-        '-m', '--mode', type=str, default='cartesian', choices=['cartesian', 'monopole'],
+        '-m', '--mode', type=str, required=True, choices=['cartesian', 'monopole'],
         help='the mode in which to expand the experiment specifications'
     )
     parser.add_argument(
