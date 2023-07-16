@@ -4,7 +4,6 @@ import torch
 from torchtyping import TensorType
 from pathlib import Path
 from jaxtyping import Float
-from .writer import Metric
 
 
 _WANDB_STORAGE_STACK = []
@@ -27,8 +26,13 @@ class WandbWizard():
         log_dir: Path,              # local directory where wandb logs are stored
         project_name: str,          # name of the wandb project
         experiment_name: str=None,  # name of the current experiment
+        circe: bool=True,           # whether to use circe to allocate experiments
         mode: str="online"
     ) -> None:
+        if circe:
+            assert (Path(os.getcwd()) / 'config.json').exists(), \
+                "Run 'circe' and allocate the experiments before calling the WandbWizard."
+
         assert mode in [
             "online",   # online logging
             "offline",  # offline logging
