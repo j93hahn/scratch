@@ -24,7 +24,10 @@ _ALLOC_EXPERIMENTS_SPEC = {
 
 
 def main():
-    parser = argparse.ArgumentParser(description="allocate experiment directories and plant configs")
+    parser = argparse.ArgumentParser(
+        description="allocate experiment directories and plant configs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument(
         '-f', '--file', type=str, required=True,
         help='the json file containing the experiment specifications'
@@ -38,7 +41,7 @@ def main():
         help='a json containing a list of abspaths to allocated exps'
     )
     parser.add_argument(
-        '-m', '--mode', type=str, required=True, choices=['cartesian', 'monopole'],
+        '-m', '--mode', type=str, default='cartesian', choices=['cartesian', 'monopole'],
         help='the mode in which to expand the experiment specifications'
     )
     parser.add_argument(

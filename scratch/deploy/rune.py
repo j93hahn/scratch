@@ -64,7 +64,10 @@ def generate_script(tdir: Path, args: argparse.Namespace):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="run the experiments")
+    parser = argparse.ArgumentParser(
+        description="run the experiments",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument(
         '-f', '--file', type=str, required=True,
         help='a json file containing a list of absolute paths to the job folders'
