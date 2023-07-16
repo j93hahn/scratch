@@ -10,13 +10,10 @@ from datetime import datetime, timedelta
 
 
 class MetricWriter():
-    def __init__(self, output_path: str='metric.json', start_iter: int=0, sync_period: int=60, seq: bool=True):
-        assert output_path.endswith('.json'), \
-            f"MetricWriter only supports .json files but got {output_path}."
+    def __init__(self, output_path: str='metrics.json', start_iter: int=0, sync_period: int=60):
+        """Writes metrics to a file in a pretty and readable format. Supports any file extension."""
         self.output_path = osp.abspath(output_path)
 
-        # useful for when we don't want to log metrics for every single iteration
-        self._ns = not seq
         self._iter = start_iter
         self._init_writer()
 
@@ -38,27 +35,26 @@ class MetricWriter():
         self._ticker.start()
 
     def _init_curr_buffer(self):
-        self._curr_buffer = {'iter': self._iter}
+        self._curr_buffer = {'empty': True}
 
     def write(self, **kwargs):
         """Add a metric to the current history."""
-        label: str
-        metric: Any
+        metric: Any # support any type of metric logging
         for label, metric in kwargs.items():
             self._curr_buffer[label] = metric
 
-    def step(self, _iter: int=-1):
+    def step(self):
         """Increment the current iteration and reset the current buffer. Protect the
             history by acquiring/releasing a lock."""
-        self._history_lock.acquire()
-        self._history.append(self._curr_buffer)
-        self._history_lock.release()
+        self._curr_buffer.pop('empty')
 
-        if self._ns:
-            assert _iter != -1, "Must specify iteration number when not logging all iterations."
-            self._iter = _iter
-        else:
-            self._iter += 1
+        if len(self._curr_buffer) > 0:
+            self.write(iter=self._iter)
+            self._history_lock.acquire()
+            self._history.append(self._curr_buffer)
+            self._history_lock.release()
+
+        self._iter += 1
         self._init_curr_buffer()
 
     def _write_to_disk(self):
@@ -145,8 +141,9 @@ if __name__ == '__main__':
     w: MetricWriter
     for i in range(1000):
         for w in writers:
-            w.write(loss=i*i)
-            w.step(_iter=1000*(i + 1))
+            if i % 30 == 0:
+                w.write(loss=i*i)
+                w.step(_iter=i+30)
 
     for w in writers:
         w.close()
