@@ -4,13 +4,14 @@ import os
 import os.path as osp
 import threading
 import time
+from itertools import chain
 from typing import Any
 from pathlib import Path
 from datetime import datetime, timedelta
 
 
 class MetricWriter():
-    def __init__(self, output_path: str='metrics.json', start_iter: int=0, sync_period: int=60):
+    def __init__(self, output_path: str='metrics.json', start_iter: int=0, sync_period: int=1):
         """Writes metrics to a file in a pretty and readable format. Supports any file extension."""
         self.output_path = osp.abspath(output_path)
 
@@ -45,7 +46,7 @@ class MetricWriter():
 
     def step(self):
         """Increment the current iteration and reset the current buffer. Protect the
-            history by acquiring/releasing a lock."""
+        history by acquiring/releasing a lock."""
         self._curr_buffer.pop('empty')
 
         if len(self._curr_buffer) > 0:
@@ -58,19 +59,14 @@ class MetricWriter():
         self._init_curr_buffer()
 
     def _write_to_disk(self):
-        """Writes the data to the disk in a pretty and readable format. Previously, this function
-            would write each buffer inside of self._history to the disk in an individual fashion.
-        """
-        # self._writer.write(json.dumps(self._history) + '\n')
-        # self._writer.write(json.dumps(self._history, indent=4, sort_keys=True, ensure_ascii=False) + '\n')
-        for item in self._history:
-            line = json.dumps(item, sort_keys=True, ensure_ascii=False) + "\n"
-            self._writer.write(line)
+        all_lines = [json.dumps(item, sort_keys=True, ensure_ascii=False) for item in self._history]
+        all_lines = '\n'.join(all_lines) + '\n'
+        self._writer.write(all_lines)
         self._writer.flush()
 
     def _flush_history(self):
         """Flush the current history to the disk. Ensure proper thread safety
-            by acquiring/releasing a lock."""
+        by acquiring/releasing a lock."""
         self._flush_lock.acquire()
         self._history_lock.acquire()
         if len(self._history):
@@ -81,7 +77,7 @@ class MetricWriter():
 
     def _sync(self):
         """Synchronizes the current metrics history with the disk. Managed
-            by a daemon thread; should never be called directly."""
+        by a daemon ticker thread; should never be called directly."""
         while not self._join:
             if (datetime.now() - self._last_sync) >= self._sync_period:
                 self._flush_history()
