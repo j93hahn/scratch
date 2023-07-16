@@ -175,16 +175,12 @@ def main():
     #                 writer3.step()
     #         writer.write(exited_loop=i+i)
     #         writer.step()
+
     with MetricStorage('test') as m:
         writer = m.add_metrics_writer()
-        m.add_logging_level('inner_loop')
-        for i in range(10):
+        for i in range(10000):
             writer.write(val=i, val_squared=i**2)
             writer.step()
-            for j in range(5):
-                writer2 = m.add_metrics_writer(f'inner_{j}.txt', level=1)
-                writer2.write(val=j, val_squared=j**2)
-                writer2.step()
 
 
 
@@ -207,5 +203,5 @@ def main2():
 
 
 if __name__ == '__main__':
-    # main()
+    main()
     main2()
