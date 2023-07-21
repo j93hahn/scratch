@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import pandas as pd
+from matplotlib.collections import PolyCollection
 from typing import List
 
 
@@ -20,10 +21,9 @@ class ViolinPlot:
         lower_adjacent_value = np.clip(lower_adjacent_value, vals[0], q1)
         return lower_adjacent_value, upper_adjacent_value
 
-    @staticmethod
-    def set_axis_style(ax: plt.Axes, labels):
-        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
-        ax.set_xlim(0.25, len(labels) + 0.75)
+    def set_x_axis_style(self, labels):
+        self.ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
+        self.ax.set_xlim(0.25, len(labels) + 0.75)
 
     def compute_percentiles(self, vals: List[np.ndarray]):
         try:
@@ -55,6 +55,7 @@ class ViolinPlot:
         assert save_path.endswith(".png"), "save_path must end with .png"
 
         parts = self.ax.violinplot(vals, showmeans=showmeans, showmedians=showmedians, showextrema=showextrema)
+        pc: PolyCollection
         for pc in parts['bodies']:
             pc.set_facecolor('#D43F3A')     # set color
             pc.set_edgecolor('black')       # set edge color
@@ -66,7 +67,7 @@ class ViolinPlot:
         self.ax.vlines(inds, q1, q3, color='k', linestyle='-', lw=5)
         self.ax.vlines(inds, w_min, w_max, color='k', linestyle='-', lw=1)
 
-        ViolinPlot.set_axis_style(self.ax, labels)
+        self.set_x_axis_style(labels)
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
