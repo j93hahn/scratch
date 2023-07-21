@@ -2,7 +2,7 @@ import torch
 from torchtyping import TensorType
 
 
-def sample_grid_box(gridSize: TensorType["x y z"], device: torch.device):
+def sample_grid_box(gridSize: TensorType["s s s"], device: torch.device):
     gridSamples = torch.stack(
         torch.meshgrid(
             torch.linspace(-1.5, 1.5, gridSize[0]),
