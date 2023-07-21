@@ -87,7 +87,7 @@ class ViolinPlot:
 
     def _clear(self):
         """Clear the plot."""
-        self.ax.clear()
+        plt.cla()
 
     def __del__(self):
         """Close the plot."""
