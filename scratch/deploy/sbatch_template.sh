@@ -13,7 +13,6 @@
 
 cd {task_dirname}
 
-eval "$(/share/data/pals/jjahn/mc3/bin/conda 'shell.bash' 'hook')"
-conda activate {conda_env}
+source /share/data/pals/jjahn/mc3/bin/activate {conda_env}
 
 {job_cmd}
