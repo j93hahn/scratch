@@ -12,6 +12,7 @@ class ViolinPlot:
 
     @staticmethod
     def adjacent_values(vals, q1, q3):
+        """Compute whiskers. Values 1.5 times the IQR beyond the low and high quartiles are considered outliers."""
         upper_adjacent_value = q3 + (q3 - q1) * 1.5
         upper_adjacent_value = np.clip(upper_adjacent_value, q3, vals[-1])
 
@@ -23,6 +24,21 @@ class ViolinPlot:
     def set_axis_style(ax: plt.Axes, labels):
         ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
         ax.set_xlim(0.25, len(labels) + 0.75)
+
+    def compute_percentiles(self, vals: List[np.ndarray]):
+        try:
+            quartile1, medians, quartile3 = np.percentile(vals, [25, 50, 75], axis=1)
+        except ValueError:  # vals' elements are not the same shape
+            quartile1 = np.array([np.percentile(_ele, 25) for _ele in vals])
+            medians = np.array([np.percentile(_ele, 50) for _ele in vals])
+            quartile3 = np.array([np.percentile(_ele, 75) for _ele in vals])
+        finally:
+            whiskers = np.array([
+                ViolinPlot.adjacent_values(sorted(array), q1, q3)
+                for array, q1, q3 in zip(vals, quartile1, quartile3)
+            ])
+            whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
+            return quartile1, medians, quartile3, whiskers_min, whiskers_max
 
     def plot(self,
         vals: List[np.ndarray],
@@ -44,29 +60,21 @@ class ViolinPlot:
             pc.set_edgecolor('black')       # set edge color
             pc.set_alpha(1)                 # set opacity
 
-        quartile1, medians, quartile3 = np.percentile(vals, [25, 50, 75], axis=1)
-        whiskers = np.array([
-            ViolinPlot.adjacent_values(sorted_array, q1, q3)
-            for sorted_array, q1, q3 in zip(vals, quartile1, quartile3)
-        ])
-        whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
+        q1, med, q3, w_min, w_max = self.compute_percentiles(vals)
+        inds = np.arange(1, len(med) + 1)
+        self.ax.scatter(inds, med, marker='o', color='white', s=5, zorder=3)
+        self.ax.vlines(inds, q1, q3, color='k', linestyle='-', lw=5)
+        self.ax.vlines(inds, w_min, w_max, color='k', linestyle='-', lw=1)
 
-        inds = np.arange(1, len(medians) + 1)
-        self.ax.scatter(inds, medians, marker='o', color='white', s=5, zorder=3)
-        self.ax.vlines(inds, quartile1, quartile3, color='k', linestyle='-', lw=5)
-        self.ax.vlines(inds, whiskers_min, whiskers_max, color='k', linestyle='-', lw=1)
-
-        # set style for the axes
         ViolinPlot.set_axis_style(self.ax, labels)
-
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
         plt.savefig(save_path, dpi=300)
-        self.clear()
+        self._clear()
 
     def hue_plot(self, df: pd.DataFrame, x: str, y: str, hue: str, palette: str = "Set2"):
-        """Plot a violin plot with hue, a.k.a. side-by-side violin plots."""
+        """Plot a violin plot with hue, a.k.a. side-by-side violin plots. Unfinished function."""
         sns.violinplot(ax=self.ax, data=df, x=x, y=y, hue=hue, palette=palette)
         self.ax.set_title(f"{y} vs {x} with hue {hue}")
         self.ax.set_xlabel(x)
@@ -74,10 +82,8 @@ class ViolinPlot:
         self.ax.legend(loc="upper right")
         self.ax.grid(True)
         plt.savefig(f"{y}_vs_{x}_with_hue_{hue}.png", dpi=300)
-        self.clear()
+        self._clear()
 
-    def clear(self):
+    def _clear(self):
+        """Clear the plot."""
         self.ax.clear()
-
-
-x = ViolinPlot()
