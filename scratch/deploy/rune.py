@@ -32,6 +32,20 @@ def load_template():
     return template
 
 
+def formatted_job_cmd(tdir: Path, user_job_cmd: str):
+    cfg = load_cfg(tdir / "config.json")
+    job_cmd = ' '.join(cfg['script']) + ' '
+
+    if user_job_cmd:    # append user supplied job command
+        job_cmd += user_job_cmd
+
+    # get values from the config file to format missing components in the job command
+    vals = []
+    for i in range(list(cfg).index('script') + 1, len(list(cfg))):
+        vals.append(list(cfg.values())[i])
+    return job_cmd.format(*vals)
+
+
 def generate_script(tdir: Path, args: argparse.Namespace):
     """Generate the sbatch script as a string and return it."""
     if args.nost:
@@ -39,16 +53,7 @@ def generate_script(tdir: Path, args: argparse.Namespace):
     else:
         singleton = "#SBATCH -d singleton"
 
-    with open(tdir / "config.json", "r") as f:
-        cfg = json.load(f)
-        job_cmd = ' '.join(cfg['script']) + ' '
-
-    if args.job:
-        # get values from the config file to format missing components in the job command
-        vals = []
-        for i in range(list(cfg).index('script') + 1, len(list(cfg))):
-            vals.append(list(cfg.values())[i])
-        job_cmd += args.job.format(*vals)
+    job_cmd = formatted_job_cmd(tdir, args.job)
 
     script = load_template()
     return script.format(
