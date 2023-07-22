@@ -148,6 +148,7 @@ def sbatch_run(script: str):
         sbatch_file.file.write(script)
         sbatch_file.file.seek(0)
         sbatch_script = sbatch_file.name
+        # capture_output=True captures stdout/stderr in the log file (slurm.out)
         subprocess.run(f"sbatch {sbatch_script}", shell=True, capture_output=True)
 
 
