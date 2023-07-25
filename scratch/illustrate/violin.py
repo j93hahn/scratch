@@ -27,6 +27,7 @@ class ViolinPlot:
         """Plot a violin plot without hue. Generates vertical violin plots only. Deprecated:
             use plot_v2() instead. Matplotlib's API lacks the versability and customizability
             of seaborn's API."""
+        print("WARNING: plot() is deprecated, use plot_v2() instead")
         assert len(vals) == len(labels), "vals and labels must have the same length"
         assert save_path.endswith(".png"), "save_path must end with .png"
 
