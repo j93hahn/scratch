@@ -45,7 +45,7 @@ class ViolinPlot:
 
     def plot_v2(
         self, labels: List[str], data: List[Any], x: str, y: str, title: str,
-        xlabel: str, ylabel: str, path: str, palette: str="Set2"
+        xlabel: str, ylabel: str, xlabels: List[str], path: str, palette: str="Set2"
     ):
         """Plot a violin plot without hue. Generates vertical violin plots only. Mirror
             implementation of plot() above, but using seaborn's API."""
@@ -55,13 +55,14 @@ class ViolinPlot:
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
+        self.ax.set_xticks(np.arange(len(xlabels)), labels=xlabels)
         plt.savefig(path, dpi=300)
         self._clear()
 
     def split_plot(
         self, labels: List[str], data: List[Any], data2: List[Any],
         x: str, y: str, hue: str, title: str, xlabel: str, ylabel: str,
-        path: str, palette: str="Set2", legend_loc: str="upper right"
+        xlabels: List[str], path: str, palette: str="Set2", legend_loc: str="upper right"
     ):
         """Plot a violin plot with hue, a.k.a. side-by-side split violin plots. Generates
             vertical violin plots only.
@@ -76,6 +77,7 @@ class ViolinPlot:
             title (str): the title of the plot
             xlabel (str): the x-axis label
             ylabel (str): the y-axis label
+            xlabels (List[str]): the individual labels for the x-axis
             path (str): the path to save the plot
             palette (str, optional): the color palette. Defaults to 'Set2'.
             legend_loc (str, optional): the location of the legend. Defaults to 'upper right'.
@@ -89,6 +91,7 @@ class ViolinPlot:
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
+        self.ax.set_xticks(np.arange(len(xlabels)), labels=xlabels)
         self.ax.legend(loc=legend_loc)
         plt.savefig(path, dpi=300)
         self._clear()
@@ -122,7 +125,7 @@ class ViolinPlot:
             whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
             return quartile1, medians, quartile3, whiskers_min, whiskers_max
 
-    def _extract_pandas_df(self, split: bool, labels: List[str], data: List[Any], data2: Optional[List[Any]] = None) -> pd.DataFrame:
+    def _extract_pandas_df(self, split: bool, labels: List[str], data: List[Any], data2: Optional[List[Any]]=None) -> pd.DataFrame:
         """Extract a pandas DataFrame from the data and labels."""
         assert len(labels) == len(data), f"labels and data must have the same length, got {len(labels)} and {len(data)}"
         df = pd.DataFrame(dict(zip(labels, data)))
@@ -152,8 +155,11 @@ class ViolinPlot:
 
 if __name__ == '__main__':
     x = ViolinPlot()
-    x.split_plot(['layer', 'distribution', 'label'], [[0, 1, 2, 3, 4], [np.random.randn(50) for _ in range(5)], 'coarse'], \
-                [[0, 1, 2, 3, 4], [np.random.randn(50) for _ in range(5)], 'fine'], 'layer', 'distribution', 'label', \
-                'Visualizing Activation Statistics by Layer', 'Layer', 'Activation Distribution', 'split_violin.png')
-    x.plot_v2(['layer', 'distribution'], [[0, 1, 2, 3, 4], [np.random.randn(50) for _ in range(5)]], 'layer', 'distribution', \
-            'Visualizing Activation Statistics by Layer', 'Layer', 'Activation Distribution', 'violin.png')
+    rng = np.random.default_rng(12341280)
+    x.split_plot(['layer', 'distribution', 'label'], [[0, 1, 2, 3, 4], [rng.random(50) for _ in range(5)], 'coarse'], \
+                [[0, 1, 2, 3, 4], [rng.random(50) for _ in range(5)], 'fine'], 'layer', 'distribution', 'label', \
+                'Visualizing Activation Statistics by Layer', 'Layer', 'Activation Distribution',
+                ['layer 1', 'layer 2', 'layer 3', 'layer 4', 'layer 5'], 'split_violin.png')
+    x.plot_v2(['layer', 'distribution'], [[0, 1, 2, 3, 4], [rng.random(50) for _ in range(5)]], 'layer', 'distribution', \
+            'Visualizing Activation Statistics by Layer', 'Layer', 'Activation Distribution',
+            ['layer 1', 'layer 2', 'layer 3', 'layer 4', 'layer 5'], 'violin.png')
