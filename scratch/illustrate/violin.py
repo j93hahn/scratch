@@ -10,6 +10,13 @@ from torch import Tensor
 class ViolinPlot:
     def __init__(self, nrows=1, ncols=1, figsize=(10, 10)):
         self.ax: plt.Axes
+        sns.set_style('whitegrid')
+        _, self.ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+
+    def reset(self, nrows, ncols, figsize):
+        """Close the current plot and create another one with new dimensions."""
+        plt.close()
+        sns.set_style('whitegrid')
         _, self.ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
 
     def plot(
@@ -30,7 +37,7 @@ class ViolinPlot:
             pc.set_edgecolor('black')       # set edge color
             pc.set_alpha(1)                 # set opacity
 
-        q1, med, q3, w_min, w_max = self.compute_percentiles(vals)
+        q1, med, q3, w_min, w_max = self._compute_percentiles(vals)
         inds = np.arange(1, len(med) + 1)
         self.ax.scatter(inds, med, marker='o', color='white', s=5, zorder=3)
         self.ax.vlines(inds, q1, q3, color='k', linestyle='-', lw=5)
@@ -44,31 +51,45 @@ class ViolinPlot:
         self._clear()
 
     def plot_v2(
-        self, labels: List[str], data: List[Any], x: str, y: str, title: str,
-        xlabel: str, ylabel: str, xlabels: List[str], path: str, palette: str="Set2"
+        self, cols: List[str], data: List[Any], x: str, y: str, title: str,
+        xlabel: str, ylabel: str, xlabels: List[str], path: str, palette: str="Set2",
+        legend_loc: str="upper right", show_extrema: bool=True
     ):
         """Plot a violin plot without hue. Generates vertical violin plots only. Mirror
             implementation of plot() above, but using seaborn's API."""
-        df = self._extract_pandas_df(split=False, labels=labels, data=data)
-        assert x in labels and y in labels
-        sns.violinplot(data=df, x=x, y=y, palette=palette, ax=self.ax)
+        df = self._extract_pandas_df(split=False, cols=cols, data=data)
+        assert x in cols and y in cols
+        sns.violinplot(data=df, x=x, y=y, linewidth=1, palette=palette, ax=self.ax)
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
-        self.ax.set_xticks(np.arange(len(xlabels)), labels=xlabels)
+
+        # set x-axis labels and mark distribution extrema if specified
+        inds = np.arange(len(xlabels))
+        self.ax.set_xticks(inds, labels=xlabels)
+        if show_extrema:
+            extrema = df.groupby(x)[y].agg(['min', 'max']).to_numpy()
+            self.ax.hlines(extrema[:, 0], inds - 0.07, inds + 0.07, color='black', linestyle='solid', lw=1, label="Extrema")
+            self.ax.hlines(extrema[:, 1], inds - 0.07, inds + 0.07, color='black', linestyle='solid', lw=1)
+        self.ax.legend(loc=legend_loc)
         plt.savefig(path, dpi=300)
         self._clear()
 
     def split_plot(
-        self, labels: List[str], data: List[Any], data2: List[Any],
+        self, cols: List[str], data: List[Any], data2: List[Any],
         x: str, y: str, hue: str, title: str, xlabel: str, ylabel: str,
-        xlabels: List[str], path: str, palette: str="Set2", legend_loc: str="upper right"
+        xlabels: List[str], path: str, palette: str="Set2",
+        legend_loc: str="upper right", show_extrema: bool=True
     ):
         """Plot a violin plot with hue, a.k.a. side-by-side split violin plots. Generates
             vertical violin plots only.
 
+        The cut parameter (default 2) is set to determine the extent to which the density is
+            extended beyond the extreme datapoints. Set to 0 to limit the violin range within
+            the range of the observed data (produces more traditional box plot).
+
         Args:
-            labels (List[str]): the labels for the data
+            labels (List[str]): the column names in the pandas DataFrame
             data (List[Any]): the data to plot
             data2 (List[Any]): the second data to plot
             x (str): the variable where we observe the distributions
@@ -81,17 +102,27 @@ class ViolinPlot:
             path (str): the path to save the plot
             palette (str, optional): the color palette. Defaults to 'Set2'.
             legend_loc (str, optional): the location of the legend. Defaults to 'upper right'.
+            show_extrema (bool, optional): whether to show the distribution extrema. Defaults to True.
 
         Returns:
             None. Produces a split violin plot along the specified orientation.
         """
-        df = self._extract_pandas_df(split=True, labels=labels, data=data, data2=data2)
-        assert x in labels and y in labels and hue in labels
-        sns.violinplot(data=df, x=x, y=y, hue=hue, split=True, palette=palette, ax=self.ax)
+        df = self._extract_pandas_df(split=True, cols=cols, data=data, data2=data2)
+        assert x in cols and y in cols and hue in cols
+        sns.violinplot(data=df, x=x, y=y, hue=hue, split=True, linewidth=1, palette=palette, ax=self.ax)
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
+
+        # set x-axis labels and mark distribution extrema if specified
+        inds = np.arange(len(xlabels))
         self.ax.set_xticks(np.arange(len(xlabels)), labels=xlabels)
+        if show_extrema:
+            hues, lc = df[hue].unique().tolist(), ['green', 'tab:brown']
+            for i in range(len(hues)):
+                extrema = df.query(f"{hue} == '{hues[i]}'").groupby(x)[y].agg(['min', 'max']).to_numpy()
+                self.ax.hlines(extrema[:, 0], inds - 0.07, inds + 0.07, color=lc[i], linestyle='solid', lw=1, label=f"{hues[i]} Extrema")
+                self.ax.hlines(extrema[:, 1], inds - 0.07, inds + 0.07, color=lc[i], linestyle='solid', lw=1)
         self.ax.legend(loc=legend_loc)
         plt.savefig(path, dpi=300)
         self._clear()
@@ -110,7 +141,7 @@ class ViolinPlot:
         self.ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
         self.ax.set_xlim(0.25, len(labels) + 0.75)
 
-    def compute_percentiles(self, vals: List[np.ndarray]):
+    def _compute_percentiles(self, vals: List[np.ndarray]):
         try:
             quartile1, medians, quartile3 = np.percentile(vals, [25, 50, 75], axis=1)
         except ValueError:  # vals' elements are not the same shape
@@ -125,22 +156,22 @@ class ViolinPlot:
             whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
             return quartile1, medians, quartile3, whiskers_min, whiskers_max
 
-    def _extract_pandas_df(self, split: bool, labels: List[str], data: List[Any], data2: Optional[List[Any]]=None) -> pd.DataFrame:
+    def _extract_pandas_df(self, split: bool, cols: List[str], data: List[Any], data2: Optional[List[Any]]=None) -> pd.DataFrame:
         """Extract a pandas DataFrame from the data and labels."""
-        assert len(labels) == len(data), f"labels and data must have the same length, got {len(labels)} and {len(data)}"
-        df = pd.DataFrame(dict(zip(labels, data)))
+        assert len(cols) == len(data), f"labels and data must have the same length, got {len(cols)} and {len(data)}"
+        df = pd.DataFrame(dict(zip(cols, data)))
         if split:   # concatenate data2 to df; the hue variable will split the data into two groups
             assert data2 is not None, "data2 must be provided when split is True"
             assert len(data) == len(data2), f"data and data2 must have the same length, got {len(data)} and {len(data2)}"
-            _df2 = pd.DataFrame(dict(zip(labels, data2)))
+            _df2 = pd.DataFrame(dict(zip(cols, data2)))
             df = pd.concat([df, _df2])
 
-        for i in range(len(labels)):    # ensure each cell contains one piece of information
-            df = df.explode(labels[i])
+        for i in range(len(cols)):    # ensure each cell contains one piece of information
+            df = df.explode(cols[i])
             if isinstance(data[i], list) and (isinstance(data[i][0], float) or \
                 isinstance(data[i][0], np.ndarray) or isinstance(data[i][0], Tensor)):
                 # convert dtype to float from object if list of floats, np.ndarray, or torch.tensor
-                df[labels[i]] = df[labels[i]].astype(float)
+                df[cols[i]] = df[cols[i]].astype(float)
 
         return df
 
