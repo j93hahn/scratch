@@ -32,7 +32,10 @@ def load_template():
     return template
 
 
-def formatted_job_cmd(tdir: Path, user_job_cmd: str):
+def formatted_job_cmd(tdir: Path, user_job_cmd: str, ignore_config: bool):
+    if ignore_config:   # use the user supplied job command as is
+        assert user_job_cmd, "user_job_cmd must be specified if ignore_config is True"
+        return user_job_cmd
     cfg = load_cfg(tdir / "config.json")
     job_cmd = ' '.join(cfg['script']) + ' '
 
@@ -53,7 +56,7 @@ def generate_script(tdir: Path, args: argparse.Namespace):
     else:
         singleton = "#SBATCH -d singleton"
 
-    job_cmd = formatted_job_cmd(tdir, args.job)
+    job_cmd = formatted_job_cmd(tdir, args.job, args.ignore_config)
 
     script = load_template()
     return script.format(
@@ -108,6 +111,10 @@ def main():
     parser.add_argument(
         '--nost', default=False, action='store_true',
         help='do use the singleton option'
+    )
+    parser.add_argument(
+        '-I', '--ignore-config', default=False, action='store_true',
+        help='ignore the config file and run the job command as is'
     )
     args = parser.parse_args()
     print(args)
