@@ -135,16 +135,19 @@ def main():
         assert tdir.exists() and tdir.is_dir(), \
             f"{tdir} does not exist or is not a directory"
 
-        script = generate_script(tdir, args)
-
-        if args.print:
-            print(script)
-            return
-
         if args.action == 'run':
+            script = generate_script(tdir, args)
+            if args.print:
+                print(script)
+                return
+
             sbatch_run(script)
             cprint(f"Submitted batch job named {tdir.name}", 'cyan')
         else:
+            if args.print:
+                print(f"scancel -n {tdir.name}")
+                return
+
             sbatch_cancel(tdir.name)
             cprint(f"Cancelled batch job named {tdir.name}", 'red')
 
