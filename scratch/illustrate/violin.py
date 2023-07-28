@@ -119,11 +119,11 @@ class ViolinPlot:
         inds = np.arange(len(xlabels))
         self.ax.set_xticks(np.arange(len(xlabels)), labels=xlabels)
         if show_extrema:
-            hues, lc = df[hue].unique().tolist(), ['black', 'blue']
+            hues, lc, extend = df[hue].unique().tolist(), ['black', 'blue'], [0.07, 0.05]
             for i in range(len(hues)):
                 extrema = df.query(f"{hue} == '{hues[i]}'").groupby(x)[y].agg(['min', 'max']).to_numpy()
-                self.ax.hlines(extrema[:, 0], inds - 0.07, inds + 0.07, color=lc[i], linestyle='solid', lw=1, label=f"{hues[i]} Extrema")
-                self.ax.hlines(extrema[:, 1], inds - 0.07, inds + 0.07, color=lc[i], linestyle='solid', lw=1)
+                self.ax.hlines(extrema[:, 0], inds - extend[i], inds + extend[i], color=lc[i], linestyle='solid', lw=1, label=f"{hues[i]} Extrema")
+                self.ax.hlines(extrema[:, 1], inds - extend[i], inds + extend[i], color=lc[i], linestyle='solid', lw=1)
                 self.ax.scatter(inds, extrema[:, 0], color=lc[i], marker='o', s=4)
                 self.ax.scatter(inds, extrema[:, 1], color=lc[i], marker='o', s=4)
         self.ax.legend(loc=legend_loc)
