@@ -127,6 +127,7 @@ def main():
     edirs = load_cfg(args.file)
     print(f"Found {len(edirs)} experiments to {args.action}.\n")
 
+    _printed = False
     for tdir in edirs:
         tdir = Path(tdir)
         assert tdir.exists() and tdir.is_dir(), \
@@ -134,21 +135,23 @@ def main():
 
         if args.action == 'run':
             script = generate_script(tdir, args)
-            if args.print:
+            if args.print and not _printed:
                 print("--- printing sbatch script ---")
                 print(script)
-                return
+                _printed = True
 
-            sbatch_run(script)
-            cprint(f"Submitted batch job named {tdir.name}", 'cyan')
+            if not args.print:
+                sbatch_run(script)
+                cprint(f"Submitted batch job named {tdir.name}", 'cyan')
         else:
-            if args.print:
+            if args.print and not _printed:
                 print("--- printing scancel command ---")
                 print(f"scancel -n {tdir.name}\n")
-                return
+                _printed = True
 
-            sbatch_cancel(tdir.name)
-            cprint(f"Cancelled batch job named {tdir.name}", 'red')
+            if not args.print:
+                sbatch_cancel(tdir.name)
+                cprint(f"Cancelled batch job named {tdir.name}", 'red')
 
 
 def sbatch_run(script: str):
