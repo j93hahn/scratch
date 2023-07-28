@@ -58,10 +58,10 @@ def main():
     cfgs = extract_from_launch_config(launch_config, args.mode)
 
     if args.print:
-        print('\nrunning in print mode, will not plant experiment folders and configs\n')
-        for cfg in cfgs:
-            json.dump(cfg, sys.stdout, indent=4)
-            sys.stdout.write('\n\n')
+        print("--- printing example directory and planted config file ---\n")
+        print(f"exp directory: {osp.join(LAUNCH_DIR_ABSPATH, cfgs[0]['name'])}")
+        json.dump(cfgs[0], sys.stdout, indent=4)
+        sys.stdout.write('\n\n')
         return
 
     # create the launch directory if it doesn't exist
@@ -93,6 +93,7 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
         cfgs = cartesian_expansion(launch_config['singular'])
     elif mode == 'monopole':
         cfgs = monopole_expansion(launch_config['singular'])
+
     for i in range(len(cfgs)):
         # update the singular config with job/experiment name and the uniform config
         name = {'name': '_'.join(map(str, list(cfgs[i].values())))}

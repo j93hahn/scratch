@@ -117,10 +117,7 @@ def main():
         help='ignore the config file and run the job command as is'
     )
     args = parser.parse_args()
-    print(args)
-
-    if args.print:
-        print("WARN: using print mode")
+    print('args={' + ', '.join(f'{k}={v}' for k, v in vars(args).items()) + '}')
 
     if args.action not in _VALID_ACTIONS:
         raise ValueError(
@@ -128,7 +125,7 @@ def main():
         )
 
     edirs = load_cfg(args.file)
-    print(f"Found {len(edirs)} experiments to {args.action}.")
+    print(f"Found {len(edirs)} experiments to {args.action}.\n")
 
     for tdir in edirs:
         tdir = Path(tdir)
@@ -138,6 +135,7 @@ def main():
         if args.action == 'run':
             script = generate_script(tdir, args)
             if args.print:
+                print("--- printing sbatch script ---")
                 print(script)
                 return
 
@@ -145,7 +143,8 @@ def main():
             cprint(f"Submitted batch job named {tdir.name}", 'cyan')
         else:
             if args.print:
-                print(f"scancel -n {tdir.name}")
+                print("--- printing scancel command ---")
+                print(f"scancel -n {tdir.name}\n")
                 return
 
             sbatch_cancel(tdir.name)
