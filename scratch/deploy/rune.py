@@ -9,6 +9,7 @@ using the parameters specified in the config file and command line.
 import argparse
 import subprocess
 import json
+import os.path as osp
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from termcolor import cprint
@@ -124,8 +125,15 @@ def main():
             f"action must be one of {_VALID_ACTIONS}, but given: {args.action}"
         )
 
-    edirs = load_cfg(args.file)
-    print(f"Found {len(edirs)} experiments to {args.action}.\n")
+    if args.file.endswith('.json'):
+        edirs = load_cfg(args.file)
+        print(f"Found {len(edirs)} experiments to {args.action} from {args.file}\n")
+    else:   # single experiment sbatch submit
+        _path = osp.abspath(args.file)
+        assert osp.exists(_path) and osp.isdir(_path), \
+            f"{_path} does not exist or is not a directory"
+        edirs = [_path]
+        print(f"Running single sbatch job in {edirs[0]}\n")
 
     _printed = False
     for tdir in edirs:
