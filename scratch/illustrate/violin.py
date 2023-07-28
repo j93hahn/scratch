@@ -30,7 +30,6 @@ class ViolinPlot:
         print("UserWarning: ViolinPlot.plot: use ViolinPlot.plot_v2() instead; this method lacks "
               "the versability and customizability of seaborn's API.")
         assert len(vals) == len(labels), "vals and labels must have the same length"
-        assert save_path.endswith(".png"), "save_path must end with .png"
 
         parts = self.ax.violinplot(vals, showmeans=showmeans, showmedians=showmedians, showextrema=showextrema)
         pc: PolyCollection
