@@ -5,14 +5,13 @@ import os.path as osp
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from termcolor import cprint
-from wandb.sdk.lib.runid import generate_id
 
 
 _VALID_ACTIONS = ('run', 'cancel')
 _DEFAULT_PARTITION = 'greg-gpu'
 
 
-def load_cfg(fname=None):
+def load_json_log(fname=None) -> dict:
     assert fname is not None
     with open(fname, "r") as f:
         cfg = json.load(f)
@@ -30,7 +29,7 @@ def formatted_job_cmd(tdir: Path, user_job_cmd: str, ignore_config: bool):
     if ignore_config:   # use the user supplied job command as is
         assert user_job_cmd, "user_job_cmd must be specified if ignore_config is True"
         return user_job_cmd
-    cfg = load_cfg(tdir / "config.json")
+    cfg = load_json_log(tdir / "config.json")
     job_cmd = ' '.join(cfg['script']) + ' '
 
     if user_job_cmd:    # append user supplied job command
@@ -40,7 +39,7 @@ def formatted_job_cmd(tdir: Path, user_job_cmd: str, ignore_config: bool):
     vals = []
     for i in range(list(cfg).index('script') + 1, len(list(cfg))):
         vals.append(list(cfg.values())[i])
-    return job_cmd.format(*vals)
+    return job_cmd.format(*vals), cfg['job_id']
 
 
 def generate_script(tdir: Path, args: argparse.Namespace):
@@ -50,11 +49,11 @@ def generate_script(tdir: Path, args: argparse.Namespace):
     else:
         singleton = "#SBATCH -d singleton"
 
-    job_cmd = formatted_job_cmd(tdir, args.job, args.ignore_config)
+    job_cmd, jname = formatted_job_cmd(tdir, args.job, args.ignore_config)
 
     script = load_template()
     return script.format(
-        jname=generate_id(length=8),    # generate a random name for the job
+        jname=jname,
         singleton=singleton,
         partition=args.partition,
         num_devices=args.num_cores,
@@ -119,17 +118,18 @@ def main():
         )
 
     if args.file.endswith('.json'):
-        edirs = load_cfg(args.file)
+        edirs = load_json_log(args.file)
         print(f"Found {len(edirs)} experiments to {args.action} from {args.file}\n")
     else:   # single experiment sbatch submit
         _path = osp.abspath(args.file)
         assert osp.exists(_path) and osp.isdir(_path), \
             f"{_path} does not exist or is not a directory"
-        edirs = [_path]
-        print(f"Running single sbatch job in {edirs[0]}\n")
+        _jname = load_json_log(osp.join(_path, "config.json"))['job_id']
+        edirs = {_path: _jname}
+        print(f"Running single slurm job in {_path}\n")
 
     _printed = False
-    for tdir in edirs:
+    for tdir, jname in edirs.items():
         tdir = Path(tdir)
         assert tdir.exists() and tdir.is_dir(), \
             f"{tdir} does not exist or is not a directory"
@@ -143,16 +143,16 @@ def main():
 
             if not args.print:
                 sbatch_run(script)
-                cprint(f"Submitted batch job named {tdir.name}", 'cyan')
+                cprint(f"Submitted batch job {jname}", 'cyan')
         else:
             if args.print and not _printed:
                 print("--- printing scancel command ---")
-                print(f"scancel -n {tdir.name}\n")
+                print(f"scancel -n {jname}\n")
                 _printed = True
 
             if not args.print:
-                sbatch_cancel(tdir.name)
-                cprint(f"Cancelled batch job named {tdir.name}", 'red')
+                sbatch_cancel(jname)
+                cprint(f"Cancelled batch job {jname}", 'red')
 
 
 def sbatch_run(script: str):

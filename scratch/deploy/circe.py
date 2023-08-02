@@ -4,8 +4,9 @@ import os
 import os.path as osp
 import sys
 import itertools
+from .rune import load_json_log
 from termcolor import cprint
-from .rune import load_cfg
+from wandb.sdk.lib.runid import generate_id
 
 
 _DEFAULT_COLOR = 'cyan'
@@ -46,7 +47,7 @@ def main():
     LAUNCH_DIR_ABSPATH = osp.abspath(args.dir)
     ALLOC_LOG_FNAME = osp.abspath(args.log)
 
-    launch_config = load_cfg(LAUNCH_FNAME)
+    launch_config = load_json_log(LAUNCH_FNAME)
     cfgs = extract_from_launch_config(launch_config, args.mode)
 
     if args.print:
@@ -63,12 +64,15 @@ def main():
     os.chdir(LAUNCH_DIR_ABSPATH)
 
     # plant the experiment folders and configs
-    alloc_acc = []
+    alloc_acc = {}
     for cfg in cfgs:
         dir_name = cfg['name']
         del cfg['name']
         cfg_abspath = osp.join(LAUNCH_DIR_ABSPATH, dir_name)
-        alloc_acc.append(cfg_abspath)
+
+        jname = generate_id(length=8)       # generate a unique id for each experiment
+        alloc_acc[cfg_abspath] = jname
+        cfg = {**{'job_id': jname}, **cfg}  # add the job id to the config
         plant_config(cfg, cfg_abspath)
 
     # write the allocation log
@@ -86,10 +90,10 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
     elif mode == 'monopole':
         cfgs = monopole_expansion(launch_config['singular'])
 
-    # update each config with the job/experiment name
+    # update each config with the job/experiment folder name
     for i in range(len(cfgs)):
-        name = {'name': '_'.join(map(str, list(cfgs[i].values())))}
-        cfgs[i] = {**name, **launch_config['uniform'], **cfgs[i]}
+        _exp_folder = {'name': '_'.join(map(str, list(cfgs[i].values())))}
+        cfgs[i] = {**_exp_folder, **launch_config['uniform'], **cfgs[i]}
 
     return cfgs
 
