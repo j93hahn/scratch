@@ -9,6 +9,7 @@ from termcolor import cprint
 
 _VALID_ACTIONS = ('run', 'cancel')
 _DEFAULT_PARTITION = 'greg-gpu'
+_USER = 'jjahn'
 
 
 def load_json_log(fname=None) -> dict:
@@ -139,6 +140,10 @@ def main():
                 _printed = True
 
             if not args.print:
+                if sbatch_is_running(jname):
+                    cprint(f"Job {jname} has already been submitted", 'yellow')
+                    continue
+
                 sbatch_run(script)
                 cprint(f"Submitted batch job {jname}", 'cyan')
         else:
@@ -148,6 +153,10 @@ def main():
                 _printed = True
 
             if not args.print:
+                if not sbatch_is_running(jname):
+                    cprint(f"Job {jname} is not running", 'yellow')
+                    continue
+
                 sbatch_cancel(jname)
                 cprint(f"Cancelled batch job {jname}", 'red')
 
@@ -158,9 +167,15 @@ def sbatch_run(script: str):
         sbatch_file.file.write(script)
         sbatch_file.file.seek(0)
         sbatch_script = sbatch_file.name
-        # capture_output=True captures stdout/stderr in the log file (slurm.out)
+        # capture_output=True captures stdout/stderr in the log file (default: slurm.out)
         subprocess.run(f"sbatch {sbatch_script}", shell=True, capture_output=True)
 
 
 def sbatch_cancel(jname):
     subprocess.run(f"scancel -n {jname}", shell=True, check=True)
+
+
+def sbatch_is_running(jname: str):
+    """Check if the job ID has already been submitted to slurm."""
+    res = subprocess.run(f"squeue -u {_USER} | grep {jname}", shell=True, capture_output=True)
+    return res.returncode == 0
