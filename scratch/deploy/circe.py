@@ -47,6 +47,7 @@ def main():
     LAUNCH_DIR_ABSPATH = osp.abspath(args.dir)
     ALLOC_LOG_FNAME = osp.abspath(args.log)
 
+    # load the launch config and extract each experiment's specifications
     launch_config = load_json_log(LAUNCH_FNAME)
     cfgs = extract_from_launch_config(launch_config, args.mode)
 
@@ -72,10 +73,10 @@ def main():
 
         jname = generate_id(length=8)       # generate a unique id for each experiment
         alloc_acc[cfg_abspath] = jname
-        cfg = {**{'job_id': jname}, **cfg}  # add the job id to the config
+        cfg = {**{'job_id': jname}, **cfg}  # add the job id to the beginning of the config
         plant_config(cfg, cfg_abspath)
 
-    # write the allocation log
+    # write the allocation log containing all experiments and their job ids
     with open(ALLOC_LOG_FNAME, 'w') as f:
         json.dump(alloc_acc, f, indent=4)
         f.write('\n')

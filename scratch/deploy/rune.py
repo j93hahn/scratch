@@ -112,11 +112,7 @@ def main():
     args = parser.parse_args()
     print('args={' + ', '.join(f'{k}={v}' for k, v in vars(args).items()) + '}')
 
-    if args.action not in _VALID_ACTIONS:
-        raise ValueError(
-            f"action must be one of {_VALID_ACTIONS}, but given: {args.action}"
-        )
-
+    # load the experiment directories and corresponding job ids
     if args.file.endswith('.json'):
         edirs = load_json_log(args.file)
         print(f"Found {len(edirs)} experiments to {args.action} from {args.file}\n")
@@ -128,6 +124,7 @@ def main():
         edirs = {_path: _jname}
         print(f"Running single slurm job in {_path}\n")
 
+    # for each experiment, generate the slurm script and submit/print it
     _printed = False
     for tdir, jname in edirs.items():
         tdir = Path(tdir)
