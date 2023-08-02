@@ -1,11 +1,3 @@
-"""
-Inspiration taken from Haochen Wang.
-
-Designed for usage on the TTIC cluster. This script will run the experiments
-using the parameters specified in the config file and command line.
-"""
-
-
 import argparse
 import subprocess
 import json

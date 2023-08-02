@@ -1,17 +1,10 @@
-"""
-Inspiration taken from Haochen Wang.
-
-Designed for usage on the TTIC cluster. Given a template, this script will plant
-various configuration files for different experiments into a single directory.
-"""
-
-
 import argparse
 import json
 import os
 import os.path as osp
 import sys
 import itertools
+from wandb.sdk.lib.runid import generate_id
 from termcolor import cprint
 from .rune import load_cfg
 
@@ -94,9 +87,16 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
     elif mode == 'monopole':
         cfgs = monopole_expansion(launch_config['singular'])
 
+    # update each config with the job/experiment name
     for i in range(len(cfgs)):
-        # update the singular config with job/experiment name and the uniform config
+        """
+        previous naming convention: string together each value in the
+        singular list with camel case. problems: names become too long
+        and multiple experiments can have the same name
+
         name = {'name': '_'.join(map(str, list(cfgs[i].values())))}
+        """
+        name = {'name': generate_id(length=8)}  # generate a random name
         cfgs[i] = {**name, **launch_config['uniform'], **cfgs[i]}
 
     return cfgs
@@ -156,7 +156,7 @@ def cartesian_expansion(cfg: dict) -> list:
 
 def monopole_expansion(cfg: dict) -> list:
     """Expands a config dictionary into a list of configs via monopole expansion. The length of
-        the output is the length of the longest list in the singular config.
+        the output is the length of the shortest list among the singular config's keys.
 
     Args:
         cfg (dict): the config dictionary
