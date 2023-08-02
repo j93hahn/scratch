@@ -45,7 +45,7 @@ def formatted_job_cmd(tdir: Path, user_job_cmd: str, ignore_config: bool):
 
 def generate_script(tdir: Path, args: argparse.Namespace):
     """Generate the sbatch script as a string and return it."""
-    if args.nost:
+    if args.no_singleton:
         singleton = ""
     else:
         singleton = "#SBATCH -d singleton"
@@ -67,48 +67,48 @@ def generate_script(tdir: Path, args: argparse.Namespace):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="run the experiments",
+        description="submit job(s) to slurm",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
         '-f', '--file', type=str, required=True,
-        help='a json file containing a list of absolute paths to the job folders'
+        help='a json file containing a list of absolute paths to the job folders or a single path to a job folder'
     )
     parser.add_argument(
-        '-a', '--action', default='run',
-        help='one of {}, default {}'.format(_VALID_ACTIONS, _VALID_ACTIONS[0])
+        '-a', '--action', default='run', choices=_VALID_ACTIONS,
+        help='the action to perform'
     )
     parser.add_argument(
         '-p', '--partition', default=_DEFAULT_PARTITION, type=str,
-        help='the job partition. default {}'.format(_DEFAULT_PARTITION)
+        help='the job partition to submit to'
     )
     parser.add_argument(
         '-n', '--num-cores', type=int, default=1,
-        help='Number of cores to run the job.'
+        help='number of cores to run the job'
     )
     parser.add_argument(
-        '-j', '--job', type=str, required=False, default="",
+        '--no-singleton', action='store_true',
+        help='if set, do not run the job as a singleton'
+    )
+    parser.add_argument(
+        '-j', '--job', type=str, default="",
         help='supplements to the job command supplied in the config file'
     )
     parser.add_argument(
-        '-l', '--log', type=str, required=False, default="slurm.out",
-        help='store the slurm output in this file'
+        '-i', '--ignore-config', action='store_true',
+        help='ignore the config file and only use the user supplied job command'
     )
     parser.add_argument(
-        '-c', '--conda', type=str, required=False, default="base",
+        '-l', '--log', type=str, default="slurm.out",
+        help='the log file to write the slurm output to'
+    )
+    parser.add_argument(
+        '-c', '--conda', type=str, default="base",
         help='the conda environment to use'
     )
     parser.add_argument(
-        '-P', '--print', default=False, action='store_true',
-        help='in print mode the slurm command is printed but not executed'
-    )
-    parser.add_argument(
-        '--nost', default=False, action='store_true',
-        help='do use the singleton option'
-    )
-    parser.add_argument(
-        '-I', '--ignore-config', default=False, action='store_true',
-        help='ignore the config file and run the job command as is'
+        '-P', '--print', action='store_true',
+        help='print mode: print the slurm script to stdout instead of submitting it'
     )
     args = parser.parse_args()
     print('args={' + ', '.join(f'{k}={v}' for k, v in vars(args).items()) + '}')
