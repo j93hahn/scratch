@@ -5,6 +5,7 @@ import os.path as osp
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from termcolor import cprint
+from wandb.sdk.lib.runid import generate_id
 
 
 _VALID_ACTIONS = ('run', 'cancel')
@@ -53,7 +54,7 @@ def generate_script(tdir: Path, args: argparse.Namespace):
 
     script = load_template()
     return script.format(
-        jname=tdir.name,        # job name is the name of the experiment's directory
+        jname=generate_id(length=8),    # generate a random name for the job
         singleton=singleton,
         partition=args.partition,
         num_devices=args.num_cores,

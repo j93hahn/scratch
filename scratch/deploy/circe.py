@@ -4,7 +4,6 @@ import os
 import os.path as osp
 import sys
 import itertools
-from wandb.sdk.lib.runid import generate_id
 from termcolor import cprint
 from .rune import load_cfg
 
@@ -89,14 +88,7 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
 
     # update each config with the job/experiment name
     for i in range(len(cfgs)):
-        """
-        previous naming convention: string together each value in the
-        singular list with camel case. problems: names become too long
-        and multiple experiments can have the same name
-
         name = {'name': '_'.join(map(str, list(cfgs[i].values())))}
-        """
-        name = {'name': generate_id(length=8)}  # generate a random name
         cfgs[i] = {**name, **launch_config['uniform'], **cfgs[i]}
 
     return cfgs
@@ -172,8 +164,9 @@ def monopole_expansion(cfg: dict) -> list:
 
 def plant_config(cfg: dict, cfg_abspath: str):
     """Plants a config dictionary into a directory."""
-    if not osp.isdir(cfg_abspath):
-        os.mkdir(cfg_abspath)
+    assert not osp.exists(cfg_abspath) and not osp.isdir(cfg_abspath), \
+        f"directory {cfg_abspath} already exists --> delete it first"
+    os.mkdir(cfg_abspath)
     with open(osp.join(cfg_abspath, 'config.json'), 'w') as f:
         json.dump(cfg, f, indent=4)
         f.write('\n')
