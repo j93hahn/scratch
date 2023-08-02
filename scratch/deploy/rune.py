@@ -154,7 +154,7 @@ def main():
 
             if not args.print:
                 if not sbatch_is_running(jname):
-                    cprint(f"Job {jname} is not running", 'yellow')
+                    cprint(f"Job {jname} is already not running", 'yellow')
                     continue
 
                 sbatch_cancel(jname)
