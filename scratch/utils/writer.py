@@ -24,14 +24,13 @@ class MetricWriter():
     def _init_writer(self):
         self._init_curr_buffer()
         self._writer = Path(self.output_path).open('a', encoding='utf8')
-        self._history = []   # ensure any edits to this list are lock-protected
-        self._history_lock = threading.Lock()
+        self._history = []
+        self._history_lock = threading.Lock()   # ensure any edits to this list are lock-protected
 
     def _init_ticker(self):
         self._join = False
         self._last_sync = datetime.now()
 
-        self._flush_lock = threading.Lock()  # flushing history to disk must be lock-protected
         self._ticker = threading.Thread(target=self._sync, daemon=True)
         self._ticker.start()
 
@@ -67,13 +66,11 @@ class MetricWriter():
     def _flush_history(self):
         """Flush the current history to the disk. Ensure proper thread safety
         by acquiring/releasing a lock."""
-        self._flush_lock.acquire()
         self._history_lock.acquire()
         if len(self._history):
             self._write_to_disk()
             self._history = []
         self._history_lock.release()
-        self._flush_lock.release()
 
     def _sync(self):
         """Synchronizes the current metrics history with the disk. Managed
