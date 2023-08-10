@@ -32,13 +32,16 @@ Args:
 Returns:
     idxs: Tensor, the index of the first sample along each ray that has a CDF
         value >= p. If all samples along a ray have a CDF value < p, then the
-        function returns 0 for that ray.
+        function returns 0 for that ray. If p == 1.0, then the function returns
+        the index of the last sample along each ray.
 """
 def weighted_percentile(
     w,
     p: float = 0.5,
 ):
-    w = torch.nan_to_num(w, nan=0.0).sort(dim=-1)[0]    # sort along last axis
+    w = torch.nan_to_num(w, nan=0.0).sort(dim=-1)[0] # preprocess w
+    if p == 1.0:
+        return torch.argmax(w, axis=-1)
     mask = torch.sum(w, axis=-1) == 0
     if torch.all(mask): # return zero if all weights are zero
         return torch.zeros(w.shape[0], dtype=torch.int32)
