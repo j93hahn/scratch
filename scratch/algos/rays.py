@@ -38,7 +38,9 @@ def weighted_percentile(
     w,
     p: float = 0.5,
 ):
-    w = torch.nan_to_num(w, nan=0.0)
+    w = torch.nan_to_num(w, nan=0.0).sort(dim=-1)[0]    # sort along last axis
+    if p == 1.0:
+        return w[..., -1]
     mask = torch.sum(w, axis=-1) == 0
     if torch.all(mask): # return zero if all weights are zero
         return torch.zeros(w.shape[0], dtype=torch.int32)
