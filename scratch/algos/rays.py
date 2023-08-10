@@ -15,7 +15,7 @@ Returns:
 def integrate_weights(w):
     cw = torch.cumsum(w, axis=-1) / torch.sum(w, axis=-1, keepdims=True)
     # ensure that the CDF ends with 1 for all rays
-    assert torch.allclose(cw[..., -1], torch.tensor(1.0))
+    assert torch.allclose(cw[..., -1], torch.tensor(1.0, device=w.device))
     return cw
 
 
