@@ -12,7 +12,7 @@ Args:
 Returns:
     cw: Tensor, the integral of w where cw[..., -1] = 1.
 """
-def integrate_weights(w):
+def integrate_weights(w) -> torch.Tensor:
     cw = torch.cumsum(w, axis=-1) / torch.sum(w, axis=-1, keepdims=True)
     # ensure that the CDF ends with 1 for all rays
     assert torch.allclose(cw[..., -1], torch.tensor(1.0, device=w.device))
@@ -20,7 +20,9 @@ def integrate_weights(w):
 
 
 """
-Compute the weighted percentile of a batch of weight vectors.
+Computes the weighted percentile of a batch of weight vectors by calculating the
+cumulative sum of each weight vector and returning the index of the first sample
+along each ray that has a value >= p.
 
 Args:
     w: Tensor. w is a batch of weight vectors, where each weight vector stores
@@ -36,9 +38,9 @@ Returns:
         the index of the last sample along each ray.
 """
 def weighted_percentile(
-    w,
+    w: torch.Tensor,
     p: float = 0.5,
-):
+) -> torch.Tensor:
     w = torch.nan_to_num(w, nan=0.0).sort(dim=-1)[0] # preprocess w
     if p == 1.0:
         return torch.argmax(w, axis=-1)
@@ -52,14 +54,28 @@ def weighted_percentile(
     return torch.argmax(w, axis=-1)
 
 
-if __name__ == '__main__':
-    cw = weighted_percentile(torch.tensor([
-        [0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 1.0],
-        [0.0, 0.2, 0.2, 0.3, 0.1],
-        [0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.8, 0.1, 0.0]
-    ]))
-    assert torch.all(cw == torch.tensor([0, 4, 2, 0, 0, 2]))
-    print('Success!')
+"""
+Computes the cumulative distribution function of a batch of weight vectors by
+first computing the probability mass function of each weight vector and then
+computing the cumulative sum of each weight vector. Use this function to answer
+the question "what is the percentage of xyz locations along the ray that have a
+sigma value less than 400?".
+
+Args:
+    distribution: Tensor. Due to torch.histogram() not supporting axis as an
+        argument, w is preprocessed to be a single discrete distribution, where
+        each sample is a discrete value.
+    bins: int, the number of bins to use when computing the CDF.
+
+Returns:
+    cdf: Tensor, the CDF of the distribution.
+    bin_edges: Tensor, the edges of the bins used to compute the CDF.
+"""
+def compute_cdf(
+    distribution: torch.Tensor,
+    bins: int = 10,
+) -> torch.Tensor:
+    distribution = torch.nan_to_num(distribution, nan=0.0).flatten().sort()[0]
+    cdf, bin_edges = torch.histogram(distribution, bins=bins)
+    cdf = integrate_weights(cdf).type(torch.float32)
+    return cdf, bin_edges
