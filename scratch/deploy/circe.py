@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import sys
 import itertools
+from functools import reduce
 from .rune import load_json_log
 from termcolor import cprint
 from wandb.sdk.lib.runid import generate_id
@@ -34,8 +35,8 @@ def main():
         help='a json containing a list of abspaths to allocated exps'
     )
     parser.add_argument(
-        '-m', '--mode', type=str, default='cartesian', choices=['cartesian', 'monopole'],
-        help='the mode in which to expand the experiment specifications'
+        '-m', '--mode', type=str, default='cartesian',
+        help='the mode in which to expand the experiment specifications, should be one of cartesian, monopole, c*, or m*'
     )
     parser.add_argument(
         '-P', '--print', action='store_true',
@@ -90,6 +91,8 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
         cfgs = cartesian_expansion(launch_config['singular'])
     elif mode == 'monopole':
         cfgs = monopole_expansion(launch_config['singular'])
+    else:
+        cfgs = hybrid_expansion(launch_config['singular'], mode)
 
     # update each config with the job/experiment folder name
     for i in range(len(cfgs)):
@@ -164,6 +167,43 @@ def monopole_expansion(cfg: dict) -> list:
     output = []
     for x in list(zip(*cfg.values())):
         output.append(dict(zip(cfg, x)))
+    return output
+
+
+def hybrid_expansion(cfg: dict, mode: str) -> list:
+    """Expands a config dictionary into a list of configs via hybrid expansion. The user specifies
+        which keys to apply cartesian/monopole expansion to, and the opposite method of expansion
+        is applied to the output of the first operation and the remaining keys.
+
+    Args:
+        cfg (dict): the config dictionary
+
+    Returns:
+        A list of configs."""
+    assert mode[0] in ['c', 'm'], f"mode must be one of 'c*' or 'm*'. Given {mode}"
+    assert mode[1:].isnumeric(), f"mode must be one of 'c*' or 'm*'. Given {mode}"
+    indices = reduce(lambda acc, x: acc + [int(x)], mode[1:], [])
+    initial_keys = [list(cfg.keys())[index] for index in indices]
+    initial_dict = {key: cfg[key] for key in initial_keys}
+    final_dict = {key: cfg[key] for key in cfg if key not in initial_keys}
+
+    output = []
+    if mode[0] == 'c':
+        _output = cartesian_expansion(initial_dict)
+        _output = [{key: [_dict[key]] for key in _dict} for _dict in _output]
+        _output = [dict(**x, **final_dict) for x in _output]
+        for _dict in _output:
+            _dict = {key: _dict[key] for key in list(cfg.keys())}
+            output.append(monopole_expansion(_dict))
+    else:
+        _output = monopole_expansion(initial_dict)
+        _output = [{key: [_dict[key]] for key in _dict} for _dict in _output]
+        _output = [dict(**x, **final_dict) for x in _output]
+        for _dict in _output:
+            _dict = {key: _dict[key] for key in list(cfg.keys())}   # restore the original key order
+            output.append(cartesian_expansion(_dict))               # cartesian expansion of the remaining keys
+
+    output = [item for sublist in output for item in sublist]   # flatten the list
     return output
 
 
