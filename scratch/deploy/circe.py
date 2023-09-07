@@ -36,7 +36,7 @@ def main():
     )
     parser.add_argument(
         '-m', '--mode', type=str, default='cartesian',
-        help='the mode in which to expand the experiment specifications, should be one of cartesian, monopole, c*, or m*'
+        help='the mode in which to expand the experiment specifications, should be one of cartesian, monopole, c* or m* which support hybrid expansion'
     )
     parser.add_argument(
         '-P', '--print', action='store_true',
@@ -81,7 +81,7 @@ def main():
     with open(ALLOC_LOG_FNAME, 'w') as f:
         json.dump(alloc_acc, f, indent=4)
         f.write('\n')
-        cprint(f'logged allocations to {ALLOC_LOG_FNAME}', color=_DEFAULT_COLOR)
+        cprint(f'logged {len(alloc_acc)} allocations to {ALLOC_LOG_FNAME}', color=_DEFAULT_COLOR)
 
 
 def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
@@ -92,6 +92,8 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
     elif mode == 'monopole':
         cfgs = monopole_expansion(launch_config['singular'])
     else:
+        assert mode[0] in ['c', 'm'] and mode[1:].isnumeric(), \
+            f"mode must be one of 'c*' or 'm*'. Given {mode}"
         cfgs = hybrid_expansion(launch_config['singular'], mode)
 
     # update each config with the job/experiment folder name
@@ -179,22 +181,26 @@ def hybrid_expansion(cfg: dict, mode: str) -> list:
         cfg (dict): the config dictionary
 
     Returns:
-        A list of configs."""
-    assert mode[0] in ['c', 'm'], f"mode must be one of 'c*' or 'm*'. Given {mode}"
-    assert mode[1:].isnumeric(), f"mode must be one of 'c*' or 'm*'. Given {mode}"
-    indices = reduce(lambda acc, x: acc + [int(x)], mode[1:], [])
+        A list of configs.
+    """
+    # remove duplicate indices and verify that they are in bounds
+    indices = list(set(reduce(lambda acc, x: acc + [int(x)], mode[1:], [])))
+    for i in range(len(indices)):
+        assert indices[i] >= 0 and indices[i] < len(cfg), \
+            f"index {indices[i]} is out of bounds for config with length {len(cfg)}"
+
+    # extract the initial keys and the final keys
     initial_keys = [list(cfg.keys())[index] for index in indices]
     initial_dict = {key: cfg[key] for key in initial_keys}
     final_dict = {key: cfg[key] for key in cfg if key not in initial_keys}
 
     output = []
-    if mode[0] == 'c':
-        _output = cartesian_expansion(initial_dict)
-        _output = [{key: [_dict[key]] for key in _dict} for _dict in _output]
-        _output = [dict(**x, **final_dict) for x in _output]
-        for _dict in _output:
-            _dict = {key: _dict[key] for key in list(cfg.keys())}
-            output.append(monopole_expansion(_dict))
+    if mode[0] == 'c':  # not a recommended recipe
+        cprint("WARNING: hybrid expansion mode {c*} is not recommended", color='red')
+        _I, _F = cartesian_expansion(initial_dict), monopole_expansion(final_dict)
+        while _I and _F:
+            _dict = {**_I.pop(0), **_F.pop(0)}
+            output.append({key: _dict[key] for key in list(cfg.keys())})
     else:
         _output = monopole_expansion(initial_dict)
         _output = [{key: [_dict[key]] for key in _dict} for _dict in _output]
@@ -202,8 +208,7 @@ def hybrid_expansion(cfg: dict, mode: str) -> list:
         for _dict in _output:
             _dict = {key: _dict[key] for key in list(cfg.keys())}   # restore the original key order
             output.append(cartesian_expansion(_dict))               # cartesian expansion of the remaining keys
-
-    output = [item for sublist in output for item in sublist]   # flatten the list
+        output = [item for sublist in output for item in sublist]   # flatten the list
     return output
 
 
