@@ -116,7 +116,7 @@ def main():
     # load the experiment directories and corresponding job ids
     if args.file.endswith('.json'):
         edirs = load_json_log(args.file)
-        print(f"Found {len(edirs)} experiments to {args.action} from {args.file}\n")
+        print(f"Found {len(edirs)} experiments to {args.action} from {args.file}")
     else:   # single experiment sbatch submit
         _path = osp.abspath(args.file)
         assert osp.exists(_path) and osp.isdir(_path), \

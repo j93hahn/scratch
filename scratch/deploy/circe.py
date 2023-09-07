@@ -78,12 +78,13 @@ def main():
         alloc_acc[cfg_abspath] = jname
         cfg = {**{'job_id': jname}, **cfg}  # add the job id to the beginning of the config
 
-        skip = False
+        skip = False    # handle overwriting logic of existing directories
         if osp.exists(cfg_abspath) and osp.isdir(cfg_abspath):
             if overwrite != "a":
                 ans = input(f"directory {cfg_abspath} already exists --> overwrite? [y/n/a] ")
                 if ans == "a":
                     overwrite = "a"
+                    cprint("overwriting all remaining existing directories...", color='yellow')
                     shutil.rmtree(cfg_abspath)
                 elif ans == "y":
                     shutil.rmtree(cfg_abspath)
