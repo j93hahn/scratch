@@ -3,6 +3,7 @@ import json
 import os
 import os.path as osp
 import sys
+import shutil
 import itertools
 from functools import reduce
 from .rune import load_json_log
@@ -67,6 +68,7 @@ def main():
 
     # plant the experiment folders and configs
     alloc_acc = {}
+    overwrite = "n"
     for cfg in cfgs:
         dir_name = cfg['name']
         del cfg['name']
@@ -75,7 +77,24 @@ def main():
         jname = generate_id(length=8)       # generate a unique id for each experiment
         alloc_acc[cfg_abspath] = jname
         cfg = {**{'job_id': jname}, **cfg}  # add the job id to the beginning of the config
-        plant_config(cfg, cfg_abspath)
+
+        skip = False
+        if osp.exists(cfg_abspath) and osp.isdir(cfg_abspath):
+            if overwrite != "a":
+                ans = input(f"directory {cfg_abspath} already exists --> overwrite? [y/n/a] ")
+                if ans == "a":
+                    overwrite = "a"
+                    shutil.rmtree(cfg_abspath)
+                elif ans == "y":
+                    shutil.rmtree(cfg_abspath)
+                else:
+                    cprint(f"skipping {cfg_abspath}", color=_DEFAULT_COLOR)
+                    skip = True
+            else:
+                shutil.rmtree(cfg_abspath)
+
+        if not skip:
+            plant_config(cfg, cfg_abspath)
 
     # write the allocation log containing all experiments and their job ids
     with open(ALLOC_LOG_FNAME, 'w') as f:
@@ -214,8 +233,6 @@ def hybrid_expansion(cfg: dict, mode: str) -> list:
 
 def plant_config(cfg: dict, cfg_abspath: str):
     """Plants a config dictionary into a directory."""
-    assert not osp.exists(cfg_abspath) and not osp.isdir(cfg_abspath), \
-        f"directory {cfg_abspath} already exists --> delete it first"
     os.mkdir(cfg_abspath)
     with open(osp.join(cfg_abspath, 'config.json'), 'w') as f:
         json.dump(cfg, f, indent=4)
