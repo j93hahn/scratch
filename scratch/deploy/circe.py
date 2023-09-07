@@ -118,7 +118,7 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
 
     # update each config with the job/experiment folder name
     for i in range(len(cfgs)):
-        _exp_folder = {'name': '_'.join(map(str, list(cfgs[i].values())))}
+        _exp_folder = {'name': '_'.join(map(str, list(cfgs[i].values()))).replace('/', '_')}
         cfgs[i] = {**_exp_folder, **launch_config['uniform'], **cfgs[i]}
 
     return cfgs
