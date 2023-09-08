@@ -5,6 +5,7 @@
 
 #SBATCH --partition={partition}
 #SBATCH -c {num_devices}
+#SBATCH -C {constraint}
 
 #SBATCH --output={log_fname}
 #SBATCH --open-mode=append

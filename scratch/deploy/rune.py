@@ -58,9 +58,10 @@ def generate_script(tdir: Path, args: argparse.Namespace):
         singleton=singleton,
         partition=args.partition,
         num_devices=args.num_cores,
+        constraint=args.constraint,
         log_fname=Path(tdir) / args.log,
         task_dirname=tdir,
-        conda_env=args.conda,
+        conda_env=args.conda_env,
         job_cmd=job_cmd
     )
 
@@ -103,8 +104,12 @@ def main():
         help='the log file to write the slurm output to'
     )
     parser.add_argument(
-        '-c', '--conda', type=str, default="base",
+        '-e', '--conda-env', type=str, default="base",
         help='the conda environment to use'
+    )
+    parser.add_argument(
+        '-c', '--constraint', type=str, default="a4000|a5000|a6000",
+        help='the constraint to use on the hardware'
     )
     parser.add_argument(
         '-P', '--print', action='store_true',
