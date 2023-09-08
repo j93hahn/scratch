@@ -108,7 +108,7 @@ def main():
         help='the conda environment to use'
     )
     parser.add_argument(
-        '-c', '--constraint', type=str, default="a4000|a5000|a6000",
+        '-c', '--constraint', type=str, default="a4000|a6000",
         help='the constraint to use on the hardware'
     )
     parser.add_argument(
