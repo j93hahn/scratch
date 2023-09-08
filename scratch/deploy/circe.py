@@ -3,7 +3,7 @@ import json
 import os
 import os.path as osp
 import sys
-import shutil
+import subprocess
 import itertools
 from functools import reduce
 from .rune import load_json_log
@@ -85,14 +85,14 @@ def main():
                 if ans == "a":
                     overwrite = "a"
                     cprint("overwriting all remaining existing directories...", color='yellow')
-                    shutil.rmtree(cfg_abspath)
+                    subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
                 elif ans == "y":
-                    shutil.rmtree(cfg_abspath)
+                    subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
                 else:
                     cprint(f"skipping {cfg_abspath}", color=_DEFAULT_COLOR)
                     skip = True
             else:
-                shutil.rmtree(cfg_abspath)
+                subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
 
         if not skip:
             plant_config(cfg, cfg_abspath)
