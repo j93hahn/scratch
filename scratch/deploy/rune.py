@@ -128,7 +128,7 @@ def main():
             f"{_path} does not exist or is not a directory"
         _jname = load_json_log(osp.join(_path, "config.json"))['job_id']
         edirs = {_path: _jname}
-        print(f"Running single slurm job in {_path}\n")
+        print(f"Running single slurm job in {_path}")
 
     # for each experiment, generate the slurm script and submit/print it
     _printed = False
