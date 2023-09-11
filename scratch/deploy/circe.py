@@ -21,7 +21,7 @@ _ALLOC_EXPERIMENTS_SPEC = {
 def main():
     parser = argparse.ArgumentParser(
         description="allocate experiment directories and plant configs",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
         '-f', '--file', type=str, required=True,
@@ -37,7 +37,7 @@ def main():
     )
     parser.add_argument(
         '-m', '--mode', type=str, default='cartesian',
-        help='the mode in which to expand the experiment specifications, should be one of cartesian, monopole, c* or m* which support hybrid expansion'
+        help='the mode in which to expand the experiment specifications. currently supports cartesian, monopole, and hybrid expansion (c*, m*)'
     )
     parser.add_argument(
         '-P', '--print', action='store_true',
@@ -112,6 +112,8 @@ def extract_from_launch_config(launch_config: dict, mode: str) -> dict:
     elif mode == 'monopole':
         cfgs = monopole_expansion(launch_config['singular'])
     else:
+        # TODO: add support for strings such as 'm15m23', where you can specify groups of keys
+        # to expand via monopole expansion and cartesian expansion
         assert mode[0] in ['c', 'm'] and mode[1:].isnumeric(), \
             f"mode must be one of 'c*' or 'm*'. Given {mode}"
         cfgs = hybrid_expansion(launch_config['singular'], mode)

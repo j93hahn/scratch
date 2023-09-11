@@ -69,11 +69,11 @@ def generate_script(tdir: Path, args: argparse.Namespace):
 def main():
     parser = argparse.ArgumentParser(
         description="submit job(s) to slurm",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
         '-f', '--file', type=str, required=True,
-        help='a json file containing a list of absolute paths to the job folders or a single path to a job folder'
+        help='a json file containing a list of absolute paths to the job folders OR a single path to a job folder'
     )
     parser.add_argument(
         '-a', '--action', default='run', choices=_VALID_ACTIONS,
