@@ -76,10 +76,22 @@ def compute_cdf(
     distribution: torch.Tensor,
     bins: Union[int, torch.Tensor]
 ) -> torch.Tensor:
+    counts, bin_edges = extract_counts(distribution, bins)
+    cdf = integrate_weights(counts).type(torch.float32)
+    return cdf, bin_edges
+
+
+"""
+Extract histogram counts from a distribution. Calculates the PDF of some distribution
+by determining number of samples in each bin.
+"""
+def extract_counts(
+    distribution: torch.Tensor,
+    bins: Union[int, torch.Tensor]
+) -> torch.Tensor:
     distribution = torch.nan_to_num(distribution, nan=0.0).flatten().sort()[0]
     if isinstance(bins, torch.Tensor):
         assert torch.all(distribution >= bins[0]) and torch.all(distribution <= bins[-1]), \
             f"all values in distribution must be in the range [{bins[0]}, {bins[-1]}]"
-    cdf, bin_edges = torch.histogram(distribution, bins=bins)
-    cdf = integrate_weights(cdf).type(torch.float32)
-    return cdf, bin_edges
+    counts, bin_edges = torch.histogram(distribution, bins=bins)
+    return counts, bin_edges
