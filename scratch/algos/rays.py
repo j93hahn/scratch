@@ -1,4 +1,5 @@
 import torch
+from typing import Union
 
 
 """
@@ -73,9 +74,12 @@ Returns:
 """
 def compute_cdf(
     distribution: torch.Tensor,
-    bins: int = 10,
+    bins: Union[int, torch.Tensor]
 ) -> torch.Tensor:
     distribution = torch.nan_to_num(distribution, nan=0.0).flatten().sort()[0]
+    if isinstance(bins, torch.Tensor):
+        assert torch.all(distribution >= bins[0]) and torch.all(distribution <= bins[-1]), \
+            f"all values in distribution must be in the range [{bins[0]}, {bins[-1]}]"
     cdf, bin_edges = torch.histogram(distribution, bins=bins)
     cdf = integrate_weights(cdf).type(torch.float32)
     return cdf, bin_edges
