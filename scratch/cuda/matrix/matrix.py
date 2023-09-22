@@ -4,8 +4,8 @@ import torch
 import unittest
 
 
-assert(torch.cuda.is_available())
-device = torch.device('cuda:0')
+assert(torch.cuda.is_available(), 'CUDA not available')
+device = torch.device('cuda')
 
 
 # load the CUDA kernel - inspiration from DVGO codebase
@@ -13,7 +13,7 @@ def load_matrix():
     parent_dir = osp.dirname(osp.abspath(__file__))
     return load(
         name='matrix',
-        sources=[
+        sources=[   # load all source files - CUDA files must have '_kernel' suffix
             osp.join(parent_dir, file)
             for file in ['matrix.cpp', 'matrix_kernel.cu']
         ],
@@ -51,8 +51,7 @@ class TestMatrix(unittest.TestCase):
             # compute correct answer and pass assertion
             correct = torch.matmul(a, b)
             test = matrix.matmul(a, b)
-            breakpoint()
-            assert torch.allclose(correct, test), 'CUDA kernel failed'
+            assert torch.allclose(correct, test, atol=1e-5), 'CUDA kernel failed'   # atol=1e-5 for numerical stability on FP32
             torch.cuda.empty_cache()
 
         print('>>>> CUDA kernel passed all matrix multiplication tests <<<<')

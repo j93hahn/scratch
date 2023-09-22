@@ -27,6 +27,7 @@ torch::Tensor matmul(torch::Tensor a, torch::Tensor b) {
 }
 
 
+// PYBIND11_MODULE macro creates Python wrappers for the C++ and CUDA functions
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("sum", &sum, "element-wise sum of two tensors");
     m.def("matmul", &matmul, "matrix multiplication of two tensors");
