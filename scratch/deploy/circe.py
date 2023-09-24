@@ -40,6 +40,10 @@ def main():
         help='the mode in which to expand the experiment specifications. currently supports cartesian, monopole, and hybrid expansion (c*, m*)'
     )
     parser.add_argument(
+        '-r', '--replace_configs', action='store_true',
+        help='replace existing config files in allocated experiment directories'
+    )
+    parser.add_argument(
         '-P', '--print', action='store_true',
         help='print mode: print the configs to stdout but do not plant them'
     )
@@ -78,19 +82,24 @@ def main():
         alloc_acc[cfg_abspath] = jname
         cfg = {**{'job_id': jname}, **cfg}  # add the job id to the beginning of the config
 
+        if args.replace_configs:    # replace config file only - useful when running scripts on pre-trained models
+            cprint(f"overwriting config file in directory {cfg_abspath}...", color='yellow')
+            plant_config(cfg, cfg_abspath, replace_config=True)
+            continue
+
         skip = False    # handle overwriting logic of existing directories
         if osp.exists(cfg_abspath) and osp.isdir(cfg_abspath):
             if overwrite != "a":
-                ans = input(f"directory {cfg_abspath} already exists --> overwrite? [y/n/a] ")
+                ans = input(f"directory {cfg_abspath} already exists --> overwrite? [(y)/n/a] ")
                 if ans == "a":
                     overwrite = "a"
                     cprint("overwriting all remaining existing directories...", color='yellow')
                     subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
-                elif ans == "y":
-                    subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
-                else:
+                elif ans == "n":
                     cprint(f"skipping {cfg_abspath}", color=_DEFAULT_COLOR)
                     skip = True
+                else:
+                    subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
             else:
                 subprocess.run(f'rm -rf {cfg_abspath}', shell=True)
 
@@ -234,9 +243,12 @@ def hybrid_expansion(cfg: dict, mode: str) -> list:
     return output
 
 
-def plant_config(cfg: dict, cfg_abspath: str):
+def plant_config(cfg: dict, cfg_abspath: str, replace_config: bool = False):
     """Plants a config dictionary into a directory."""
-    os.mkdir(cfg_abspath)
+    if not replace_config:
+        os.makedirs(cfg_abspath, exist_ok=False)
+    assert osp.exists(cfg_abspath) and osp.isdir(cfg_abspath), \
+        f"cfg path {cfg_abspath} does not exist"
     with open(osp.join(cfg_abspath, 'config.json'), 'w') as f:
         json.dump(cfg, f, indent=4)
         f.write('\n')
