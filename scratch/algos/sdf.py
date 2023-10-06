@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from tqdm.auto import tqdm
-from scratch.utils.data_2d import _ALL_SAMPLERS, simple_2d_show
+import scratch.utils.data_2d as data_2d
 from fabric.utils.event import EventStorage
 
 
@@ -120,9 +120,9 @@ class SDFTrainer2D(nn.Module):
         Generate n samples from a random 2D dataset.
         """
         if sampler_default is None:
-            sample_cls = np.random.choice(_ALL_SAMPLERS)
+            sample_cls = np.random.choice(data_2d._ALL_SAMPLERS)
         else:
-            assert sampler_default in _ALL_SAMPLERS, \
+            assert sampler_default in data_2d._ALL_SAMPLERS, \
                 f'Invalid sampler {sampler_default}'
             sample_cls = sampler_default
 
@@ -132,7 +132,7 @@ class SDFTrainer2D(nn.Module):
         self.sampled_pts = torch.from_numpy(sampler.sample(n)).float().to(device)[:, :2]
         self.meshgrid_pts, self.gt_sdf = self._extract_gt_sdf(self.sampled_pts)
         self._visualize_sdf()
-        simple_2d_show(self.sampled_pts.cpu().numpy(), self.sampler_name)
+        data_2d.simple_2d_show(self.sampled_pts.cpu().numpy(), self.sampler_name)
 
     def forward(self, pts):
         """
@@ -163,6 +163,12 @@ class SDFTrainer2D(nn.Module):
         pbar = tqdm(range(n_iters), miniters=refresh_rate, file=sys.stdout)
         with EventStorage() as metric:
             for iteration in pbar:
+                self.optimizer.zero_grad()
+                sdf = self.forward(self.meshgrid_pts)
+                sdf_loss = ((sdf - self.gt_sdf)**2).mean()
+                if self.use_eikonal_loss:   # compute Eikonal loss
+                    sdf_loss += self.eikonal_loss()
+
                 if iteration % refresh_rate == 0:   # compute PSNR on the SDF
                     psnr = self.eval()
                     metric.put_scalars(sdf_loss=sdf_loss.item(), psnr=psnr)
@@ -177,12 +183,6 @@ class SDFTrainer2D(nn.Module):
                 if iteration % 1000 == 0:
                     self._visualize_sdf(iteration)
 
-                self.optimizer.zero_grad()
-                sdf = self.forward(self.meshgrid_pts)
-                sdf_loss = ((sdf - self.gt_sdf)**2).mean()
-                if self.use_eikonal_loss:   # compute Eikonal loss
-                    sdf_loss += self.eikonal_loss()
-
                 sdf_loss.backward()
                 self.optimizer.step()
                 self.scheduler.step()
@@ -196,7 +196,7 @@ class SDFTrainer2D(nn.Module):
 
 
 if __name__ == '__main__':
-    model = SDFTrainer2D(use_eikonal_loss=False)
+    model = SDFTrainer2D(sampler_default=data_2d.Line)
     model.train()
 
     # x = torch.arange(-10, 10.01, 0.01, dtype=torch.float32)
