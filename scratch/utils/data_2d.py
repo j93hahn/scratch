@@ -5,6 +5,7 @@ with diffusion models. Repurposed for training a 2D SDF.
 
 
 import math
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn.datasets
@@ -200,7 +201,7 @@ def simple_2d_show(x, name):
     ax.set_xticks(np.arange(-4, 5, 1))
     ax.set_yticks(np.arange(-4, 5, 1))
     ax.set_title(name)
-    plt.savefig(f"{name}.pdf", dpi=300, bbox_inches='tight')
+    plt.savefig(f"plots/{name}.pdf", dpi=300, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -212,4 +213,5 @@ def display():
 
 
 if __name__ == '__main__':
+    os.makedirs('plots', exist_ok=True)
     display()
