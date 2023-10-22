@@ -27,7 +27,7 @@ along each ray that has a value >= p.
 
 Args:
     w: Tensor. w is a batch of weight vectors, where each weight vector stores
-        the weight of each sample along the last axis [N_rays, N_samples]. Note
+        the weight of each sample along the last ax is [N_rays, N_samples]. Note
         that from the volumetric rendering equations, w is not guaranteed to
         sum to 1 along the last axis; w is only guaranteed to be <= 1.
     p: float, the percentile to compute the CDF at.
@@ -95,3 +95,18 @@ def extract_counts(
             f"all values in distribution must be in the range [{bins[0]}, {bins[-1]}]"
     counts, bin_edges = torch.histogram(distribution, bins=bins)
     return counts, bin_edges
+
+
+"""
+Given the initial alpha/opacity value for an entire ray, and the length of the
+entire ray, this function computes the ideal sigma value for the entire ray. When
+considering the discretization of the ray into x number of samples, you have to take
+the ideal sigma value of the entire ray and add log(x) to it to get the ideal sigma
+value for each sample along the ray.
+"""
+def compute_ideal_sigma(alpha_init, ray_len, sample_count=None):
+    alpha_init, ray_len = torch.tensor(alpha_init), torch.tensor(ray_len)
+    ray_ideal_sigma = torch.log(torch.log(1.0 / (1.0 - alpha_init))) - torch.log(ray_len)
+    if sample_count is not None:
+        ray_ideal_sigma += torch.log(torch.tensor(sample_count))
+    return ray_ideal_sigma
