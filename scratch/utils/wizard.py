@@ -1,79 +1,42 @@
 import wandb
 import os
-import torch
-from torchtyping import TensorType
+import numpy as np
 from pathlib import Path
-from jaxtyping import Float
-
-
-_WANDB_STORAGE_STACK = []
-
-
-def get_wandb_storage():
-    """Returns:
-        The :class:`WandbStorage` object that's currently being used.
-        Throws an error if no :class:`WandbStorage` is currently enabled.
-    """
-    assert len(
-        _WANDB_STORAGE_STACK
-    ), "get_wandb_storage() has to be called inside a 'with WandbStorage(...)' context!"
-    storage: WandbWizard = _WANDB_STORAGE_STACK[-1]
-    return storage
 
 
 class WandbWizard():
     def __init__(self,
-        log_dir: Path,              # local directory where wandb logs are stored
-        project_name: str,          # name of the wandb project
-        experiment_name: str=None,  # name of the current experiment
-        circe: bool=True,           # whether to use circe to allocate experiments
-        mode: str="online"
+        project: str,
+        log_dir="./wandb",
+        reinit=False    # enable multiple runs from the same script - not necessary for our purposes
     ) -> None:
-        if circe:
-            assert (Path(os.getcwd()) / 'config.json').exists(), \
-                "Run 'circe' and allocate the experiments before calling the WandbWizard."
-
-        assert mode in [
-            "online",   # online logging
-            "offline",  # offline logging
-            "disabled"  # no logging
-        ], f"Invalid mode '{mode}' specified for WandbStorage."
-        os.environ["WANDB_MODE"] = mode
-        os.environ["WANDB_API_KEY"] = Path(__file__).parent.parent.joinpath("wandb.key").read_text()
-
-        log_dir = os.environ.get("WANDB_DIR", log_dir.__str__())
         os.makedirs(log_dir, exist_ok=True)
-        wandb.init(     # calls wandb.login() if necessary
-            project=os.environ.get("WANDB_PROJECT", project_name),
+        wandb.init(
+            project=project,
             dir=log_dir,
-            name=os.environ.get("WANDB_NAME", experiment_name),
-            reinit=True # enable multiple runs from the same script
+            name=Path(os.getcwd()).name,    # use name of current directory; assumes circe is already called to plant experiments
+            reinit=reinit
         )
 
-    def set_config(self, config_dict: dict) -> None:
-        """Sets the config for the current run."""
+        if os.path.exists('config.json'):
+            import json
+            with open('config.json') as f:
+                config_dict = json.load(f)
+            self.update_config(**config_dict)
+
+    def update_config(self, **config_dict) -> None:
         wandb.config.update(config_dict, allow_val_change=True)
 
-    def write_scalar(self, name: str, value: float, step: int):
-        wandb.log({name: value}, step=step)
+    def log(self, step=None, **kwargs):
+        wandb.log(kwargs, step=step)
 
-    def write_image(self, name: str, value: Float[TensorType, "C H W"], step: int):
-        wandb.log({name: wandb.Image(value)}, step=step)
-
-    def _close(self):
-        wandb.finish()
-
-    def __enter__(self):
-        _WANDB_STORAGE_STACK.append(self)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        _WANDB_STORAGE_STACK.pop()
-        self._close()
+    def save_images(self, step=None, **kwargs):
+        for name, value in kwargs.items():
+            wandb.log({name: wandb.Image(value)}, step=step)
 
 
 if __name__ == "__main__":
-    with WandbWizard(Path("wandb"), "tensoRF") as w:
-        for i in range(100):
-            w.write_scalar("psnr", i, i)
-            w.write_image("test", torch.randn((3, 32, 32)), i)
+    wizard = WandbWizard(project="test")
+    for i in range(0, 100, 5):
+        wizard.log(step=i, a=i, b=i**2)
+        wizard.save_images(step=i, img=np.random.rand(64, 64, 3))
