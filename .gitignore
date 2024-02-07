@@ -4,6 +4,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 alpha-inv/
+.DS_Store
 
 # C extensions
 *.so
