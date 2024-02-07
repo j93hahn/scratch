@@ -43,6 +43,19 @@ def s_density(s, x):
     return phi
 
 
+def positional_encoding_2d(x, B):
+    """
+    Transform the input points into a higher-dimensional space using
+    positional encoding via random Fourier features.
+    """
+    x_proj = (2 * torch.pi * x) @ B.T
+    out = torch.cat([
+        torch.sin(x_proj),
+        torch.cos(x_proj)
+    ], dim=-1)
+    return out
+
+
 class SDFTrainer2D(nn.Module):
     def __init__(
         self,
@@ -50,9 +63,11 @@ class SDFTrainer2D(nn.Module):
         n=1000,
         sampler_default=None,
         meshgrid_gran=101,
-        geometric_init=True,
+        geometric_init=False,
         use_eikonal_loss=True,
-        weight_norm=True
+        weight_norm=True,
+        input_dim=64,
+        scale=1.0
     ):
         """
         A neural network that approximates a 2D SDF. The input is a set of 2D points
@@ -63,12 +78,16 @@ class SDFTrainer2D(nn.Module):
         os.makedirs(f'{exp_dir}', exist_ok=True)
         self._generate_data(n, sampler_default, meshgrid_gran)
 
+        # positional encoding
+        self.B = torch.randn(input_dim, 2) * scale
         self.network = nn.Sequential(
-            nn.Linear(2, 64),
-            nn.Softplus(beta=100),
-            nn.Linear(64, 64),
-            nn.Softplus(beta=100),
-            nn.Linear(64, 1)
+            nn.Linear(input_dim * 2, 256),
+            # nn.Softplus(beta=100),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            # nn.Softplus(beta=100),
+            nn.ReLU(),
+            nn.Linear(256, 1)
         ).to(device)
 
         if geometric_init:  # TODO: apply circular initialization to weight parameters
@@ -138,6 +157,7 @@ class SDFTrainer2D(nn.Module):
         """
         Compute the SDF for the given set of points.
         """
+        pts = positional_encoding_2d(pts, self.B).to(device)
         return self.network(pts)
 
     def eikonal_loss(self):
