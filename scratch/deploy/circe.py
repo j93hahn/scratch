@@ -6,7 +6,7 @@ import sys
 import subprocess
 import itertools
 from functools import reduce
-from .rune import load_json_log
+from .rune_conda import load_json_log
 from termcolor import cprint
 from wandb.sdk.lib.runid import generate_id
 
@@ -41,7 +41,7 @@ def main():
     )
     parser.add_argument(
         '-r', '--replace_configs', action='store_true',
-        help='replace existing config files in allocated experiment directories'
+        help='WARNING: untested! replace existing config files in allocated experiment directories'
     )
     parser.add_argument(
         '-P', '--print', action='store_true',

@@ -8,8 +8,10 @@ from termcolor import cprint
 
 
 _VALID_ACTIONS = ('run', 'cancel')
-_DEFAULT_PARTITION = 'greg-gpu'
+_DEFAULT_PARTITION = 'gpu'
 _USER = 'jjahn'
+_APPTAINER_DIR = '/share/data/2pals/jjahn/apptainers'
+_CPU_PARTITIONS = ('cpu', 'cpu-long')
 
 
 def load_json_log(fname=None) -> dict:
@@ -20,7 +22,7 @@ def load_json_log(fname=None) -> dict:
 
 
 def load_template():
-    template_fname = Path(__file__).resolve().parent / "sbatch_template.sh"
+    template_fname = Path(__file__).resolve().parent / "sbatch_apptainer.sh"
     with template_fname.open("r") as f:
         template = f.read()
     return template
@@ -31,10 +33,10 @@ def formatted_job_cmd(tdir: Path, user_job_cmd: str, ignore_config: bool):
         assert user_job_cmd, "user_job_cmd must be specified if ignore_config is True"
         return user_job_cmd
     cfg = load_json_log(tdir / "config.json")
-    job_cmd = ' '.join(cfg['script']) + ' '
+    job_cmd = ' '.join(cfg['script'])
 
     if user_job_cmd:    # append user supplied job command
-        job_cmd += user_job_cmd
+        job_cmd += ' ' + user_job_cmd
 
     # get values from the config file to format missing components in the job command
     vals = []
@@ -51,17 +53,21 @@ def generate_script(tdir: Path, args: argparse.Namespace):
         singleton = "#SBATCH -d singleton"
 
     job_cmd, jname = formatted_job_cmd(tdir, args.job, args.ignore_config)
+    if args.partition in _CPU_PARTITIONS:
+        cores = f'-c{args.num_cores}'
+    else:
+        cores = f'-G{args.num_cores}'
 
     script = load_template()
     return script.format(
         jname=jname,
         singleton=singleton,
         partition=args.partition,
-        num_devices=args.num_cores,
-        constraint=args.constraint,
+        cores=cores,
+        # constraint=args.constraint,
         log_fname=Path(tdir) / args.log,
-        task_dirname=tdir,
-        conda_env=args.conda_env,
+        tdir=tdir,
+        container=(Path(_APPTAINER_DIR) / args.apptainer_image).as_posix(),
         job_cmd=job_cmd
     )
 
@@ -100,23 +106,26 @@ def main():
         help='ignore the config file and only use the user supplied job command'
     )
     parser.add_argument(
-        '-l', '--log', type=str, default="slurm.out",
-        help='the log file to write the slurm output to'
+        '-l', '--log', type=str, default="beehive.out",
+        help='the log file to write the output to'
     )
     parser.add_argument(
-        '-e', '--conda-env', type=str, default="base",
-        help='the conda environment to use'
+        '-im', '--apptainer-image', type=str, default="nerfstudio.sif",
+        help='the apptainer to use'
     )
-    parser.add_argument(
-        '-c', '--constraint', type=str, default="a4000|a6000",
-        help='the constraint to use on the hardware'
-    )
+    # TODO: figure out how to build apptainer images that are agnostic to compute architecture
+    # parser.add_argument(
+    #     '-c', '--constraint', type=str, default="a4000|a6000",
+    #     help='WARNING: do not use! the constraint to use on the hardware'
+    # )
     parser.add_argument(
         '-P', '--print', action='store_true',
         help='print mode: print the slurm script to stdout instead of submitting it'
     )
     args = parser.parse_args()
     print('args={' + ', '.join(f'{k}={v}' for k, v in vars(args).items()) + '}')
+    assert (Path(_APPTAINER_DIR) / args.apptainer_image).exists(), \
+        f"{args.apptainer_image} is not a valid apptainer image"
 
     # load the experiment directories and corresponding job ids
     if args.file.endswith('.json'):
