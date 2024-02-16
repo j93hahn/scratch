@@ -13,5 +13,5 @@ def main():
 
 
 if __name__ == '__main__':
-    with gin.config_scope('eval'):  # use same scope as eval.py
+    with gin.config_scope('eval'):
         main()
