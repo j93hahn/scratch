@@ -1,5 +1,6 @@
-import torch
 import numpy as np
+import torch
+import torch.nn as nn
 
 
 def fourier_features(x, B):
@@ -22,3 +23,22 @@ def fourier_features(x, B):
     assert x_proj.shape[-1] == 2 * B.shape[0] and x_proj.shape[:-1] == x.shape[:-1], \
         f"Expected shape [..., {2 * B.shape[0]}], got {x_proj.shape}"
     return x_proj
+
+
+class SceneContraction(nn.Module):
+    """
+    applies scene contraction to the input positions
+
+    by default, the order of contraction is set to 'inf' which corresponds to the max norm.
+    it's useful in the case of a hash grid encoder
+    """
+    def __init__(self, order='inf'):
+        super().__init__()
+        self.order = order
+
+    def contract(self, x):
+        mag = torch.linalg.norm(x, ord=self.order, dim=-1)[..., None]   # [..., 1]
+        return torch.where(mag < 1, x, (2 - (1 / mag)) * (x / mag))     # [..., 3]
+
+    def forward(self, positions):
+        return self.contract(positions)
