@@ -16,9 +16,7 @@ def weight_init(shape, mode, fan_in, fan_out):
 
 
 class Linear(nn.Module):
-    """
-    simple linear layer with custom white-box weight initialization. taken from Tero Karras
-    """
+    """Custom PyTorch linear layer with custom white-box weight initialization."""
     def __init__(self, in_features, out_features, bias=True, init_mode='kaiming_uniform', init_weight=1, init_bias=0):
         super().__init__()
         self.in_features = in_features
