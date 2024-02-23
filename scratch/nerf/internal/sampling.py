@@ -58,5 +58,13 @@ Nerfstudio's implementation of the proposal sampler from Mip-NeRF 360
 
 
 """
-My new sampler that uses alpha invariance
+My new sampler that uses alpha invariance. Discuss convex hull optimization idea with Rana
+
+- Learn a convex hull over actual objects and use it to sample points
+- Discuss how to implement fast ray-hull intersection algorithms (are there lessons or techniques from ray-tracing/graphics?)
+- How to implement a memory-efficient convex hull representation (mesh, point cloud, etc.). Or use a series of 3D planes
+    that are encoded as a single normal vector and a distance from the origin
+- Is this even doable? Is it better than voxels/octrees?
+- Is using such an explicit representation guaranteed to be better than voxels/octrees and better than implicit representations
+    like MLPs?
 """
