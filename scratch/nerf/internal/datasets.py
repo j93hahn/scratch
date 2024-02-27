@@ -1,5 +1,5 @@
-import gin
 import numpy as np
+from internal import render
 
 
 class Dataset():
