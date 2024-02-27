@@ -5,6 +5,7 @@ import tinycudann as tcnn
 from internal import utils
 from internal import configs
 from internal import mlp
+from internal import render
 
 
 def per_level_scale(max_res, base_res, n_levels):

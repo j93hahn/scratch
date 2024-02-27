@@ -1,6 +1,6 @@
 import torch.nn as nn
 from internal import fields
-from internal import utils
+from internal import render
 
 
 class Model(nn.Module):
@@ -12,5 +12,5 @@ class Model(nn.Module):
     def train_step(self, xyz, delta, viewdir):
         weights, raw_features = self.density_field(xyz, delta)
         rgb = self.color_field(xyz, raw_features, viewdir)
-        colors = utils.get_final_image(weights, rgb)
+        colors = render.get_final_image(weights, rgb)
         return colors

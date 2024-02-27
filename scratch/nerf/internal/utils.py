@@ -27,16 +27,6 @@ def fourier_features(x, B):
     return x_proj
 
 
-def get_final_image(weights, quantity):
-    """
-    a general purpose function to compute the final image from the weights and the quantity
-
-    supports rgb, density, and normals
-    """
-    image = torch.sum(weights * quantity, dim=-1)
-    return image
-
-
 class SceneContraction(nn.Module):
     """
     applies scene contraction to the input positions
