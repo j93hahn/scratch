@@ -45,6 +45,7 @@ class Config:
 
     # color field parameters
     use_tcnn_color:         bool = True
+    use_sh:                 bool = False
     color_n_layers:         int = 3
     color_n_neurons:        int = 64
     ff_sigma:               float = 1.0     # std of the fourier features for viewdirs

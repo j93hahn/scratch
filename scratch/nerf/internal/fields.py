@@ -15,7 +15,7 @@ def per_level_scale(max_res, base_res, n_levels):
     return scales
 
 
-class DensityField(nn.Module):
+class NGPField(nn.Module):
     def __init__(self, config: configs.Config):
         super().__init__()
         self.use_scene_contraction = config.use_scene_contraction
@@ -93,7 +93,7 @@ class DensityField(nn.Module):
         return weights
 
 
-class ColorField(nn.Module):
+class RadianceField(nn.Module):
     def __init__(self, config: configs.Config):
         super().__init__()
         self.B = torch.randn(config.ff_feat_dim_viewdirs, 3) * config.ff_sigma
