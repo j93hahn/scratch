@@ -1,17 +1,17 @@
-import torch
-from internal import fields
 from internal import configs
+from internal import engine
 from lightning import seed_everything
+from absl import app
 import gin
-from scratch.utils.wizard import WandbWizard
 
 
 def main():
-    args = configs.parse_args()
-    config = configs.parse_yaml(args.config)
-    print(config)
+    configs.define_flags()
+    with gin.config_scope('eval'):
+        config = configs.load_config()
+        seed_everything(config.seed)
+        engine.launch(config, train=False)
 
 
 if __name__ == '__main__':
-    with gin.config_scope('eval'):
-        main()
+    app.run(main)
