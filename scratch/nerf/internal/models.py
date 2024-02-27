@@ -1,14 +1,16 @@
-import torch
 import torch.nn as nn
-import gin
+from internal import fields
+from internal import utils
 
 
-@gin.configurable
 class Model(nn.Module):
-    def __init__(self, encoder, color_field):
+    def __init__(self, config):
         super().__init__()
-        self.encoder = encoder
-        self.color_field = color_field
+        self.density_field = fields.DensityField(config)
+        self.color_field = fields.ColorField(config)
 
-    def forward(self, xyz, delta, viewdir):
-        raw = self.encoder(xyz)
+    def train_step(self, xyz, delta, viewdir):
+        weights, raw_features = self.density_field(xyz, delta)
+        rgb = self.color_field(xyz, raw_features, viewdir)
+        colors = utils.get_final_image(weights, rgb)
+        return colors

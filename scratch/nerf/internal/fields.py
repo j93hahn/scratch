@@ -1,58 +1,79 @@
 import torch
+import torch.nn as nn
 import numpy as np
 import tinycudann as tcnn
+from internal import utils
+from internal import configs
+from internal import mlp
 
 
-def per_level_scale(max_res=4096, base_res=16, n_levels=16):
-    scale = np.exp(
+def per_level_scale(max_res, base_res, n_levels):
+    scales = np.exp(
         (np.log(max_res) - np.log(base_res)) / (n_levels - 1)
     ).tolist()
-    return scale
+    return scales
 
 
-# https://github.com/nerfstudio-project/nerfstudio/blob/main/nerfstudio/fields/nerfacto_field.py#L43
-
-
-class DensityField(torch.nn.Module):
-    def __init__(self, near, far, tau=1.0, T=0.99):
+class DensityField(nn.Module):
+    def __init__(self, config: configs.Config):
         super().__init__()
-        self.offset = torch.tensor(
-            np.log(np.log(1/T)) - np.log(far-near) - (tau**2)/2
-        )
-        self.encoder = tcnn.NetworkWithInputEncoding(   # instant-NGP backbone
-            n_input_dims=3,
-            n_output_dims=16,
-            encoding_config={
-                "otype": "HashGrid",
-                "n_levels": 16,
-                "n_features_per_level": 2,
-                "log2_hashmap_size": 19,
-                "base_resolution": 16,
-                "per_level_scale": per_level_scale(),
-            },
-            network_config={
-                "otype": "FullyFusedMLP",
-                "activation": "ReLU",
-                "output_activation": "None",
-                "n_neurons": 64,
-                "n_hidden_layers": 1,
-            },
-        )
-        self.B = torch.randn(
-            3, 16, requires_grad=False
-        )   # * scale
-        self.color_field = RGBField()
+        self.use_scene_contraction = config.use_scene_contraction
+        self.raw_feat_dim = config.hash_output_dim - 1
+        if not self.use_scene_contraction:
+            self.scene_box = utils.SceneBox(config.aabb)
+            self.offset = torch.tensor(
+                np.log(np.log(1/config.init_trans)) - np.log(config.far-config.near) - (config.tau**2)/2
+            )
+        else:
+            self.scene_contraction = utils.SceneContraction(config.ord_scene_contraction)
+            self.offset_inner = torch.tensor(
+                np.log(np.log(1/config.init_trans)) - np.log(2) - (config.tau**2)/2
+            )
+            self.offset_outer = torch.tensor(
+                np.log(np.log(1/config.init_trans)) - np.log(4) - (config.tau**2)/2
+            )
+        if config.use_tcnn_density:
+            per_level_scale_configs = {
+                'max_res': config.max_grid_res,
+                'base_res': config.hash_base_res,
+                'n_levels': config.hash_n_levels,
+            }
+            self.encoder = tcnn.NetworkWithInputEncoding(
+                n_input_dims=3,
+                n_output_dims=config.hash_output_dim,
+                encoding_config={
+                    "otype": "HashGrid",
+                    "n_levels": config.hash_n_levels,
+                    "n_features_per_level": config.hash_feats_per_level,
+                    "log2_hashmap_size": config.hash_map_log_size,
+                    "base_resolution": config.hash_base_res,
+                    "per_level_scale": per_level_scale(per_level_scale_configs),
+                },
+                network_config={
+                    "otype": "FullyFusedMLP",
+                    "activation": "ReLU",
+                    "output_activation": "None",
+                    "n_neurons": config.mlp_n_neurons,
+                    "n_hidden_layers": config.mlp_n_layers,
+                },
+            )
+        else:   # TODO: implement Pythonic HashEncoding
+            raise ValueError("Only TCNN is supported at the moment")
 
-    def forward(self, xyz, delta, viewdir):
-        # check if xyz > 0 and xyz < 1
-        selector = (xyz > 0) & (xyz < 1)
-        raw = self.encoder(xyz[selector]) # [N_rays, N_samples, 16]
-        raw = raw * selector
-
-        raw = self.encoder(xyz) # [N_rays, N_samples, 16]
-        log_densities, raw_features = raw[..., 0], raw[..., 1:]
+    def forward(self, positions, delta):
+        if not self.scene_contraction:
+            positions = self.scene_box(positions)
+        else:
+            positions = self.scene_contraction(positions)
+            positions = (positions + 2.0) / 4.0
+        selector = ((positions > 0) & (positions < 1)).all(dim=-1)
+        positions = positions * selector[..., None]
+        if not positions.requires_grad:
+            positions.requires_grad = True
+        raw = self.encoder(positions)
+        log_densities, raw_features = torch.split(raw, [1, self.raw_feat_dim], dim=-1)
         weights = self.compute_volrend_ws(log_densities, delta)
-        rgb = self.color_field(raw_features)
+        return weights, raw_features
 
     def compute_volrend_ws(self, log_densities, delta):
         # log_densities, delta have shape [N_rays, N_samples]
@@ -71,37 +92,38 @@ class DensityField(torch.nn.Module):
         return weights
 
 
-class RGBField(torch.nn.Module):
-    def __init__(self, type='mlp'):
+class ColorField(nn.Module):
+    def __init__(self, config: configs.Config):
         super().__init__()
-        if type == 'mlp':
+        self.B = torch.randn(config.ff_feat_dim_viewdirs, 3) * config.ff_sigma
+        self.B.requires_grad_(False)
+        self.raw_feat_dim = config.hash_output_dim - 1
+        if config.use_tcnn_color:
             self.encoder = tcnn.Network(
-                n_input_dims=15 + 16,
+                n_input_dims=self.raw_feat_dim + config.ff_feat_dim_viewdirs * 2,
                 n_output_dims=3,
                 network_config={
                     "otype": "FullyFusedMLP",
                     "activation": "ReLU",
                     "output_activation": "None",
-                    "n_neurons": 64,
-                    "n_hidden_layers": 2,
+                    "n_neurons": config.color_n_neurons,
+                    "n_hidden_layers": config.color_n_layers,
                 }
             )
-        elif type == 'sh':
-            self.encoder = ...  # TODO: figure out how this works
         else:
-            raise ValueError(f"Unknown color field type: {type}")
+            self.encoder = nn.Sequential(
+                mlp.Linear(self.raw_feat_dim + config.ff_feat_dim_viewdirs * 2, config.color_n_neurons, init_bias=1.0),
+                mlp.ReLU(),
+                mlp.Linear(config.color_n_neurons, config.color_n_neurons, init_bias=1.0),
+                mlp.ReLU(),
+                mlp.Linear(config.color_n_neurons, config.color_n_neurons, init_bias=1.0),
+                mlp.ReLU(),
+                mlp.Linear(config.color_n_neurons, 3, init_bias=1.0),
+            )
 
-    def forward(self, features):
-        rgb = self.encoder(features)
+    def forward(self, raw_features, viewdirs):
+        # encode viewdirs with positional encoding
+        viewdirs = utils.fourier_features(viewdirs, self.B)
+        rgb = self.encoder(raw_features)
         rgb = torch.sigmoid(rgb)
         return rgb
-
-
-def get_final_image(weights, quantity):
-    """
-    a general purpose function to compute the final image from the weights and the quantity
-
-    supports rgb, density, and normals
-    """
-    image = torch.sum(weights * quantity, dim=-1)
-    return image

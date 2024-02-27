@@ -30,3 +30,8 @@ class Linear(nn.Module):
         if self.bias is not None:
             x = x.add_(self.bias.to(x.dtype))
         return x
+
+
+class ReLU(nn.Module):
+    def forward(self, x):
+        return x.clamp(min=0)
