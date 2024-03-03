@@ -1,20 +1,23 @@
 import wandb
 import os
 import numpy as np
+from typing import Optional
 from pathlib import Path
 
 
 class WandbWizard():
     def __init__(self,
         project: str,
+        name: Optional[str] = None,
         log_dir="./wandb",
         reinit=False    # enable multiple runs from the same script - not necessary for our purposes
     ) -> None:
         os.makedirs(log_dir, exist_ok=True)
+        name = name or Path(os.getcwd()).name
         wandb.init(
             project=project,
             dir=log_dir,
-            name=Path(os.getcwd()).name,    # use name of current directory; assumes circe is already called to plant experiments
+            name=name,
             reinit=reinit
         )
 
