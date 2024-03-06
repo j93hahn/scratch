@@ -10,7 +10,7 @@ class WandbWizard():
         project: str,
         name: Optional[str] = None,
         log_dir="./wandb",
-        reinit=False    # enable multiple runs from the same script - not necessary for our purposes
+        reinit=True    # enable multiple runs from the same script - not necessary for our purposes
     ) -> None:
         os.makedirs(log_dir, exist_ok=True)
         name = name or Path(os.getcwd()).name
