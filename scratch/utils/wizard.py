@@ -10,7 +10,7 @@ class WandbWizard():
         project: str,
         name: Optional[str] = None,
         log_dir="./wandb",
-        reinit=True    # enable multiple runs from the same script - not necessary for our purposes
+        reinit=True    # enable multiple runs from the same script
     ) -> None:
         os.makedirs(log_dir, exist_ok=True)
         name = name or Path(os.getcwd()).name
@@ -36,6 +36,10 @@ class WandbWizard():
     def save_images(self, step=None, **kwargs):
         for name, value in kwargs.items():
             wandb.log({name: wandb.Image(value)}, step=step)
+
+    def save_movies(self, step=None, **kwargs):
+        for name, value in kwargs.items():
+            wandb.log({name: wandb.Video(value)}, step=step)
 
 
 if __name__ == "__main__":
