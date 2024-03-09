@@ -10,6 +10,7 @@ class WandbWizard():
     def __init__(self,
         project: str,
         name: Optional[str] = None,
+        config: Optional[dict] = None,
         log_dir="./wandb",
         reinit=True    # enable multiple runs from the same script
     ) -> None:
@@ -19,14 +20,9 @@ class WandbWizard():
             project=project,
             dir=log_dir,
             name=name,
-            reinit=reinit
+            reinit=reinit,
+            config=config,
         )
-
-        if os.path.exists('config.json'):
-            import json
-            with open('config.json') as f:
-                config_dict = json.load(f)
-            self.update_config(**config_dict)
 
     def update_config(self, **config_dict) -> None:
         wandb.config.update(config_dict, allow_val_change=True)
@@ -44,7 +40,8 @@ class WandbWizard():
 
 
 if __name__ == "__main__":
-    wizard = WandbWizard(project="test")
+    config = {"lr": 1e-3, "step_size": 5, "optimizer": "adam"}
+    wizard = WandbWizard(project="test", name="test_run", config=config)
     for i in range(0, 100, 5):
         wizard.log(step=i, a=i, b=i**2)
         wizard.save_images(step=i, img=np.random.rand(64, 64, 3))
