@@ -12,7 +12,7 @@ class WandbWizard():
         name: Optional[str] = None,
         config: Optional[dict] = None,
         log_dir="./wandb",
-        reinit=True    # enable multiple runs from the same script
+        reinit=False    # enable multiple runs from the same script
     ) -> None:
         os.makedirs(log_dir, exist_ok=True)
         name = name or Path(os.getcwd()).name
