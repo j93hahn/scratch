@@ -60,6 +60,9 @@ def generate_activation_hook(n=1, verbose=False):
     return hook_fn
 
 
+###### ----------------------------- example usage ----------------------------- ######
+
+
 class SimpleNet(nn.Module):
     def __init__(self, n=1):
         super().__init__()
