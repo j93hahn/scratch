@@ -33,6 +33,12 @@ class WandbWizard():
 
     @staticmethod
     def log_distributions(step=None, **kwargs):
+        """
+        You can only see the histograms for a given run, not across the whole project.
+        https://github.com/wandb/wandb/issues/1211#issuecomment-993504902
+
+        For more detailed plots, just use matplotlib and seaborn locally.
+        """
         for name, value in kwargs.items():
             assert isinstance(value, np.ndarray), "Statistics must be numpy arrays"
             wandb.log({name: wandb.Histogram(value)}, step=step)
