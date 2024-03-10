@@ -24,7 +24,7 @@ def generate_activation_hook(n=1, verbose=False):
         name = getattr(module, "name", "UnnamedLayer")
         assert name != "UnnamedLayer", "Provide a unique name identifier for each layer"
 
-        # define counter to log activations every _LOG_ACTIVATIONS_EVERY[0] steps
+        # define counter to log activations every n steps
         if not hasattr(hook_fn, "step"):
             hook_fn.step = 0
 
