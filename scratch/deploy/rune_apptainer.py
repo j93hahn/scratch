@@ -74,7 +74,7 @@ def generate_script(tdir: Path, args: argparse.Namespace):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="submit job(s) to slurm",
+        description="submit job(s) to the cluster using sbatch with apptainer",
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
@@ -124,6 +124,8 @@ def main():
     )
     args = parser.parse_args()
     print('args={' + ', '.join(f'{k}={v}' for k, v in vars(args).items()) + '}')
+    cprint("[WARNING] Conda environment must be stored in the apptainer image at " +
+           "/conda_tmp/mc3", 'yellow')
     assert (Path(_APPTAINER_DIR) / args.apptainer_image).exists(), \
         f"{args.apptainer_image} is not a valid apptainer image"
 
