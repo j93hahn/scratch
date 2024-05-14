@@ -6,9 +6,10 @@ import torch.nn as nn
 class ActivationHook:
     def __init__(self, name):
         # using a class allows us to assign an instance per activation layer
+        # initialize active to False so that we can control when to start logging
         self.statistics = {}
         self.name = name
-        self.active = True       # conditional flags to activate inner data logging
+        self.active = False       # conditional flags to activate inner data logging
         self.verbose = True
 
     def create_hook(self):
