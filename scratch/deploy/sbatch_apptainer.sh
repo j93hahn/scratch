@@ -13,7 +13,7 @@
 
 cd {tdir}
 
-apptainer exec --nv --no-home --bind /share:/share {container} \
+apptainer exec --nv --bind /share:/share {container} \
     /bin/bash -c "source /conda_tmp/mc3/bin/activate; \
                   export TORCH_EXTENSIONS_DIR=/share/data/2pals/jjahn/torch_cuda; \
                   {job_cmd}"
