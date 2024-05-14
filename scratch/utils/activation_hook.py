@@ -3,6 +3,48 @@ import torch
 import torch.nn as nn
 
 
+class ActivationHook:
+    def __init__(self, name):
+        # using a class allows us to assign an instance per activation layer
+        self.statistics = {}
+        self.name = name
+        self.active = True       # conditional flags to activate inner data logging
+        self.verbose = True
+
+    def create_hook(self):
+
+        def hook_fn(module, input, output):
+            name = getattr(module, "name", "UnnamedLayer")
+            assert name != "UnnamedLayer", "Provide a unique name identifier for each layer"
+
+            if not self.active:
+                return
+
+            # log distributions
+            pre, post = input[0].cpu().detach().numpy(), output.cpu().detach().numpy()
+            self.statistics[f'{name}_pre_act'] = pre
+            self.statistics[f'{name}_post_act'] = post
+
+            # log statistical measures if desired - typically only need the post-activation statistic measurements
+            if self.verbose:
+                # self.statistics[f'{name}_pre_act_mean'] = pre.mean()
+                # self.statistics[f'{name}_pre_act_std'] = pre.std()
+                # self.statistics[f'{name}_pre_act_max'] = pre.max()
+                # self.statistics[f'{name}_pre_act_min'] = pre.min()
+                self.statistics[f'{name}_post_act_mean'] = post.mean()
+                self.statistics[f'{name}_post_act_std'] = post.std()
+                self.statistics[f'{name}_post_act_max'] = post.max()
+                self.statistics[f'{name}_post_act_min'] = post.min()
+
+        return hook_fn
+
+    def set_active(self, active):
+        self.active = active
+
+    def set_verbose(self, verbose):
+        self.verbose = verbose
+
+
 def create_hook(n=1, verbose=False):
     """
     This function creates a hook that logs the pre and post statistics of an activation layer every n steps.
